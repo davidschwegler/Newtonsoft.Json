@@ -33,7 +33,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
+#if !(__IOS__)
 using System.Web.Script.Serialization;
+#endif
 using System.Xml.Linq;
 using Newtonsoft.Json.Utilities;
 using NUnit.Framework;
@@ -207,7 +209,9 @@ namespace Newtonsoft.Json.Tests
         {
             BenchmarkSerializeMethod(SerializeMethod.DataContractSerializer, value);
             BenchmarkSerializeMethod(SerializeMethod.BinaryFormatter, value);
+#if !(__IOS__)
             BenchmarkSerializeMethod(SerializeMethod.JavaScriptSerializer, value);
+#endif
             BenchmarkSerializeMethod(SerializeMethod.DataContractJsonSerializer, value);
             BenchmarkSerializeMethod(SerializeMethod.JsonNet, value);
             BenchmarkSerializeMethod(SerializeMethod.JsonNetLinq, value);
@@ -228,9 +232,11 @@ namespace Newtonsoft.Json.Tests
 
         public void DeserializeTests<T>(string json)
         {
+#if !(__IOS__)
             BenchmarkDeserializeMethod<T>(SerializeMethod.JavaScriptSerializer, json);
             BenchmarkDeserializeMethod<T>(SerializeMethod.DataContractJsonSerializer, json);
-            BenchmarkDeserializeMethod<T>(SerializeMethod.JsonNet, json);
+#endif
+			BenchmarkDeserializeMethod<T>(SerializeMethod.JsonNet, json);
             BenchmarkDeserializeMethod<T>(SerializeMethod.JsonNetManual, json);
         }
 
@@ -253,6 +259,7 @@ namespace Newtonsoft.Json.Tests
         }
 
 #if !(PORTABLE40)
+#if !(PORTABLE || DOTNET || __IOS__)
         [Test]
         public void ConvertXmlNode()
         {
@@ -264,8 +271,9 @@ namespace Newtonsoft.Json.Tests
 
             JsonConvert.SerializeXmlNode(doc);
         }
+#endif
 
-        [Test]
+		[Test]
         public void ConvertXNode()
         {
             XDocument doc;
@@ -616,12 +624,14 @@ If attributes are not mentioned, default values are used in each case.
             };
         }
 
+#if !(__IOS__)
         public string SerializeWebExtensions(object value)
         {
             JavaScriptSerializer ser = new JavaScriptSerializer();
 
             return ser.Serialize(value);
         }
+#endif
 
         public string SerializeDataContractJson(object value)
         {
@@ -773,9 +783,11 @@ If attributes are not mentioned, default values are used in each case.
                     json = "Bytes = " + ms.Position;
                     break;
                 }
+#if !(__IOS__)
                 case SerializeMethod.JavaScriptSerializer:
                     json = SerializeWebExtensions(value);
                     break;
+#endif
                 case SerializeMethod.DataContractJsonSerializer:
                     json = SerializeDataContractJson(value);
                     break;
@@ -947,12 +959,14 @@ If attributes are not mentioned, default values are used in each case.
             return (T)serializer.Deserialize(new BsonReader(new MemoryStream(bson)), type);
         }
 
+#if !(__IOS__)
         public T DeserializeWebExtensions<T>(string json)
         {
             JavaScriptSerializer ser = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
 
             return ser.Deserialize<T>(json);
         }
+#endif
 
         public T DeserializeDataContractJson<T>(string json)
         {
@@ -980,8 +994,10 @@ If attributes are not mentioned, default values are used in each case.
                     return DeserializeJsonNetBinary<T>((byte[])json);
                 case SerializeMethod.BinaryFormatter:
                     return DeserializeBinaryFormatter<T>((byte[])json);
+#if !(__IOS__)
                 case SerializeMethod.JavaScriptSerializer:
                     return DeserializeWebExtensions<T>((string)json);
+#endif
                 case SerializeMethod.DataContractSerializer:
                     return DeserializeDataContract<T>((string)json);
                 case SerializeMethod.DataContractJsonSerializer:

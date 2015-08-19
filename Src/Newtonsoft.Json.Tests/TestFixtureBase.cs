@@ -301,7 +301,7 @@ namespace Newtonsoft.Json.Tests
     {
         public static void IsInstanceOfType(Type t, object instance)
         {
-#if NETFX_CORE
+#if NETFX_CORE || __IOS__
             if (!instance.GetType().IsAssignableFrom(t))
                 throw new Exception("Not instance of type");
 #else
@@ -316,7 +316,7 @@ namespace Newtonsoft.Json.Tests
 
         public static void Contains(IList collection, object value, string message)
         {
-#if !(NETFX_CORE || DNXCORE50)
+#if !(NETFX_CORE || DNXCORE50 || __IOS__)
             Assert.Contains(value, collection, message);
 #else
             if (!collection.Cast<object>().Any(i => i.Equals(value)))
