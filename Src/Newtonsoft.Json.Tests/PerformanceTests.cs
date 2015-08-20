@@ -23,8 +23,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
-#if !(NET20 || NET35 || NETFX_CORE || PORTABLE || DNXCORE50)
-using System.Xml;
+#if !(NET20 || NET35 || PORTABLE || DNXCORE50)
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -33,21 +32,34 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
-#if !(__IOS__)
-using System.Web.Script.Serialization;
-#endif
-using System.Xml.Linq;
-using Newtonsoft.Json.Utilities;
-using NUnit.Framework;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Xml;
+using System.Xml.Linq;
+using Windows.Foundation;
+using Windows.Storage;
 using Newtonsoft.Json.Bson;
-using System.Runtime.Serialization.Formatters.Binary;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Utilities;
+#if !(__IOS__ || NETFX_CORE)
+using System.Web.Script.Serialization;
+#endif
+#if !(NETFX_CORE)
+using System.Runtime.Serialization.Formatters.Binary;
+using NUnit.Framework;
+#else
+using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
+using TestFixtureAttribute = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
+using TestAttribute = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
+#endif
 
 namespace Newtonsoft.Json.Tests
 {
+#if NETFX_CORE
+	class SerializableAttribute : Attribute { }
+#endif
+
     [Serializable]
     [DataContract]
     public class Image
@@ -139,7 +151,12 @@ namespace Newtonsoft.Json.Tests
         {
             for (int i = 0; i < 10; i++)
             {
+#if !(NETFX_CORE)
                 using (var fs = System.IO.File.OpenText("large.json"))
+#else
+	            var file = Windows.ApplicationModel.Package.Current.InstalledLocation.GetFileAsync("large.json").GetAwaiter().GetResult();
+				using (var fs = new StreamReader(file.OpenStreamForReadAsync().GetAwaiter().GetResult()))
+#endif
                 using (JsonTextReader jsonTextReader = new JsonTextReader(fs))
                 {
                     while (jsonTextReader.Read())
@@ -184,7 +201,12 @@ namespace Newtonsoft.Json.Tests
         [Test]
         public void DeserializeLargeJson()
         {
+#if !(NETFX_CORE)
             var json = System.IO.File.ReadAllText("large.json");
+#else
+			var file = Windows.ApplicationModel.Package.Current.InstalledLocation.GetFileAsync("large.json").GetAwaiter().GetResult();
+	        var json = Windows.Storage.FileIO.ReadTextAsync(file).GetAwaiter().GetResult();
+#endif
 
             BenchmarkDeserializeMethod<IList<RootObject>>(SerializeMethod.JsonNet, json, Iterations / 10, false);
         }
@@ -208,9 +230,11 @@ namespace Newtonsoft.Json.Tests
         private void SerializeTests(object value)
         {
             BenchmarkSerializeMethod(SerializeMethod.DataContractSerializer, value);
+#if !(NETFX_CORE)
             BenchmarkSerializeMethod(SerializeMethod.BinaryFormatter, value);
 #if !(__IOS__)
             BenchmarkSerializeMethod(SerializeMethod.JavaScriptSerializer, value);
+#endif
 #endif
             BenchmarkSerializeMethod(SerializeMethod.DataContractJsonSerializer, value);
             BenchmarkSerializeMethod(SerializeMethod.JsonNet, value);
@@ -222,17 +246,19 @@ namespace Newtonsoft.Json.Tests
 
         [Test]
         public void Deserialize()
-        {
+		{
             BenchmarkDeserializeMethod<TestClass>(SerializeMethod.DataContractSerializer, XmlText);
+#if !(NETFX_CORE)
             BenchmarkDeserializeMethod<TestClass>(SerializeMethod.BinaryFormatter, HexToBytes(BinaryFormatterHex));
-            DeserializeTests<TestClass>(JsonText);
+#endif
+			DeserializeTests<TestClass>(JsonText);
             BenchmarkDeserializeMethod<TestClass>(SerializeMethod.JsonNetWithIsoConverter, JsonIsoText);
             BenchmarkDeserializeMethod<TestClass>(SerializeMethod.JsonNetBinary, HexToBytes(BsonHex));
         }
 
         public void DeserializeTests<T>(string json)
         {
-#if !(__IOS__)
+#if !(__IOS__ || NETFX_CORE)
             BenchmarkDeserializeMethod<T>(SerializeMethod.JavaScriptSerializer, json);
             BenchmarkDeserializeMethod<T>(SerializeMethod.DataContractJsonSerializer, json);
 #endif
@@ -246,6 +272,7 @@ namespace Newtonsoft.Json.Tests
             SerializeSize(CreateSerializationObject());
         }
 
+#if !(NETFX_CORE)
         [Test]
         public void SerializeSizeData()
         {
@@ -257,8 +284,9 @@ namespace Newtonsoft.Json.Tests
 
             SerializeSize(image);
         }
+#endif
 
-#if !(PORTABLE40)
+#if !(PORTABLE40 || NETFX_CORE)
 #if !(PORTABLE || DOTNET || __IOS__)
         [Test]
         public void ConvertXmlNode()
@@ -542,6 +570,7 @@ If attributes are not mentioned, default values are used in each case.
                 return ms.ToArray();
             }, "DataContractJsonSerializer");
 
+#if !(NETFX_CORE)
             byte[] binaryFormatterBytes = TimeOperation(() =>
             {
                 MemoryStream ms = null;
@@ -554,12 +583,15 @@ If attributes are not mentioned, default values are used in each case.
 
                 return ms.ToArray();
             }, "BinaryFormatter");
+#endif
 
             Console.WriteLine("Json.NET size: {0} bytes", jsonBytes.Length);
             Console.WriteLine("BSON size: {0} bytes", bsonBytes.Length);
             Console.WriteLine("WCF JSON size: {0} bytes", wcfJsonBytes.Length);
             Console.WriteLine("WCF XML size: {0} bytes", xmlBytes.Length);
+#if !(NETFX_CORE)
             Console.WriteLine("BinaryFormatter size: {0} bytes", binaryFormatterBytes.Length);
+#endif
         }
 
         #region Serialize
@@ -624,7 +656,7 @@ If attributes are not mentioned, default values are used in each case.
             };
         }
 
-#if !(__IOS__)
+#if !(__IOS__ || NETFX_CORE)
         public string SerializeWebExtensions(object value)
         {
             JavaScriptSerializer ser = new JavaScriptSerializer();
@@ -783,7 +815,7 @@ If attributes are not mentioned, default values are used in each case.
                     json = "Bytes = " + ms.Position;
                     break;
                 }
-#if !(__IOS__)
+#if !(__IOS__ || NETFX_CORE)
                 case SerializeMethod.JavaScriptSerializer:
                     json = SerializeWebExtensions(value);
                     break;
@@ -794,9 +826,11 @@ If attributes are not mentioned, default values are used in each case.
                 case SerializeMethod.DataContractSerializer:
                     json = SerializeDataContract(value);
                     break;
+#if !(NETFX_CORE)
                 case SerializeMethod.BinaryFormatter:
                     json = SerializeBinaryFormatter(value);
                     break;
+#endif
                 default:
                     throw new ArgumentOutOfRangeException("method");
             }
@@ -804,6 +838,7 @@ If attributes are not mentioned, default values are used in each case.
             return json;
         }
 
+#if !(NETFX_CORE)
         private string SerializeBinaryFormatter(object value)
         {
             string json;
@@ -815,6 +850,7 @@ If attributes are not mentioned, default values are used in each case.
             //json = BitConverter.ToString(ms.ToArray(), 0, (int)ms.Position);
             return json;
         }
+#endif
         #endregion
 
         #region Deserialize
@@ -959,7 +995,7 @@ If attributes are not mentioned, default values are used in each case.
             return (T)serializer.Deserialize(new BsonReader(new MemoryStream(bson)), type);
         }
 
-#if !(__IOS__)
+#if !(__IOS__ || NETFX_CORE)
         public T DeserializeWebExtensions<T>(string json)
         {
             JavaScriptSerializer ser = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
@@ -992,9 +1028,11 @@ If attributes are not mentioned, default values are used in each case.
                     return default(T);
                 case SerializeMethod.JsonNetBinary:
                     return DeserializeJsonNetBinary<T>((byte[])json);
+#if !(NETFX_CORE)
                 case SerializeMethod.BinaryFormatter:
                     return DeserializeBinaryFormatter<T>((byte[])json);
-#if !(__IOS__)
+#endif
+#if !(__IOS__ || NETFX_CORE)
                 case SerializeMethod.JavaScriptSerializer:
                     return DeserializeWebExtensions<T>((string)json);
 #endif
@@ -1015,11 +1053,13 @@ If attributes are not mentioned, default values are used in each case.
             return (T)serializer.ReadObject(ms);
         }
 
+#if !(NETFX_CORE)
         private T DeserializeBinaryFormatter<T>(byte[] bytes)
         {
             BinaryFormatter formatter = new BinaryFormatter();
             return (T)formatter.Deserialize(new MemoryStream(bytes));
         }
+#endif
         #endregion
 
         [Test]

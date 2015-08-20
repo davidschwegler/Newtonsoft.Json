@@ -291,8 +291,23 @@ namespace Newtonsoft.Json.Tests
 #if NETFX_CORE
   public static class Console
   {
-    public static void WriteLine(params object[] args)
+    public static void WriteLine()
     {
+    }
+    
+	public static void WriteLine(string value)
+    {
+	  Logger.LogMessage("{0}", value);
+    }
+    
+	public static void WriteLine(object value)
+    {
+	  Logger.LogMessage("{0}", value);
+    }
+
+    public static void WriteLine(string format, params object[] args)
+    {
+	  Logger.LogMessage(format, args);
     }
   }
 #endif
