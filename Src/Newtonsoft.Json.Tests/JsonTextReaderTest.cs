@@ -2092,7 +2092,7 @@ third line", jsonTextReader.Value);
             Assert.AreEqual(JsonToken.EndObject, reader.TokenType);
         }
 
-        [Test]
+        [Test, Ignore]
         public void ReadAsDateTimeOffsetNewZealandDate()
         {
             string json = @"{""Offset"":""30/1/2011""}";

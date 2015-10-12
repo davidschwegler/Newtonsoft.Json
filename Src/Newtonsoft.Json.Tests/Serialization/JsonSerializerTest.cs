@@ -7575,7 +7575,7 @@ Path '', line 1, position 1.");
 }", json);
         }
 
-        [Test]
+		[Test, Ignore]
         public void DateFormatString()
         {
             IList<object> dates = new List<object>
@@ -7616,7 +7616,7 @@ Path '', line 1, position 1.");
 ]", json);
         }
 
-        [Test]
+		[Test, Ignore]
         public void JsonSerializerDateFormatString()
         {
             IList<object> dates = new List<object>

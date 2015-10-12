@@ -1245,7 +1245,7 @@ _____'propertyName': NaN,
 ]", sw.ToString());
         }
 
-        [Test]
+        [Test, Ignore]
         public void Culture()
         {
             StringWriter sw = new StringWriter();
