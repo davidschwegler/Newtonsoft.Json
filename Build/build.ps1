@@ -106,6 +106,7 @@ task Package -depends Build {
         foreach ($frameworkDir in $frameworkDirs)
         {
           robocopy "$sourceDir\Newtonsoft.Json\bin\Release\$finalDir" $workingDir\NuGet\lib\$frameworkDir *.dll *.pdb *.xml /NP /XO /XF *.CodeAnalysisLog.xml | Out-Default
+          exec { lprun "$buildDir\set assembly public key.linq" "$workingDir\NuGet\lib\$frameworkDir\Newtonsoft.Json.dll" }
         }
       }
     }
