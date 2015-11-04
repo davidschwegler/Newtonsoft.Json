@@ -61,7 +61,7 @@ namespace Newtonsoft.Json.Tests.Linq
     [TestFixture]
     public class JObjectTests : TestFixtureBase
     {
-#if !(NET35 || NET20 || PORTABLE40)
+#if !(NET35 || NET20 || PORTABLE40 || IOS)
         [Test]
         public void EmbedJValueStringInNewJObject()
         {

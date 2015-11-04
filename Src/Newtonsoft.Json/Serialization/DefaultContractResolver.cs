@@ -30,7 +30,7 @@ using System.Collections.Concurrent;
 #endif
 using System.Collections.Generic;
 using System.ComponentModel;
-#if !(NET35 || NET20 || PORTABLE40)
+#if !(NET35 || NET20 || PORTABLE40 || IOS)
 using System.Dynamic;
 #endif
 using System.Globalization;
@@ -106,7 +106,7 @@ namespace Newtonsoft.Json.Serialization
 #if !(NET20 || NETFX_CORE || PORTABLE40 || PORTABLE)
             new EntityKeyMemberConverter(),
 #endif
-#if !(NET35 || NET20 || PORTABLE40)
+#if !(NET35 || NET20 || PORTABLE40 || IOS)
             new ExpandoObjectConverter(),
 #endif
 #if !(PORTABLE40)
@@ -929,7 +929,7 @@ namespace Newtonsoft.Json.Serialization
         }
 #endif
 
-#if !(NET35 || NET20 || PORTABLE40)
+#if !(NET35 || NET20 || PORTABLE40 || IOS)
         /// <summary>
         /// Creates a <see cref="JsonDynamicContract"/> for the given type.
         /// </summary>
@@ -999,7 +999,7 @@ namespace Newtonsoft.Json.Serialization
                 return CreateISerializableContract(objectType);
 #endif
 
-#if !(NET35 || NET20 || PORTABLE40)
+#if !(NET35 || NET20 || PORTABLE40 || IOS)
             if (typeof(IDynamicMetaObjectProvider).IsAssignableFrom(t))
                 return CreateDynamicContract(objectType);
 #endif
@@ -1147,7 +1147,7 @@ namespace Newtonsoft.Json.Serialization
                 valueProvider = new DynamicValueProvider(member);
             else
                 valueProvider = new ReflectionValueProvider(member);
-#elif !(PORTABLE40)
+#elif !(PORTABLE40 || IOS)
             valueProvider = new ExpressionValueProvider(member);
 #else
             valueProvider = new ReflectionValueProvider(member);

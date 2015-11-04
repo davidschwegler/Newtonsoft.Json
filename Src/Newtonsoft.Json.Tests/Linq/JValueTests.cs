@@ -754,7 +754,7 @@ namespace Newtonsoft.Json.Tests.Linq
 }", json);
         }
 
-#if !(NET20 || NET35 || PORTABLE40)
+#if !(NET20 || NET35 || PORTABLE40 || IOS)
         [Test]
         public void EnumTests()
         {

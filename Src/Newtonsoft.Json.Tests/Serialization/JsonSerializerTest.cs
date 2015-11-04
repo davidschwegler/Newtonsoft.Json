@@ -77,7 +77,7 @@ using System.Xml.Linq;
 using System.Collections.Specialized;
 using System.Linq.Expressions;
 #endif
-#if !(NET35 || NET20)
+#if !(NET35 || NET20 || IOS)
 using System.Dynamic;
 #endif
 #if NET20
@@ -3259,7 +3259,7 @@ To fix this error either change the JSON to a JSON primitive value (e.g. string,
 Path '', line 1, position 1.");
         }
 
-#if !(NET35 || NET20 || PORTABLE40)
+#if !(NET35 || NET20 || PORTABLE40 || IOS)
         [Test]
         public void CannotDeserializeArrayIntoDynamic()
         {
@@ -5082,7 +5082,7 @@ Path '', line 1, position 1.");
 }", json);
         }
 
-#if !(NET35 || NET20 || PORTABLE40)
+#if !(NET35 || NET20 || PORTABLE40 || IOS)
         [Test]
         public void SerializeExpandoObject()
         {

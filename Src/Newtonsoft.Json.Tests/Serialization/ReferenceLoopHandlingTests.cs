@@ -36,7 +36,7 @@ using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
 #endif
-#if !(NET20 || NET35)
+#if !(NET20 || NET35 || IOS)
 using System.Dynamic;
 #endif
 using System.Runtime.Serialization;
@@ -212,7 +212,7 @@ namespace Newtonsoft.Json.Tests.Serialization
         }
 #endif
 
-#if !(NET20 || NET35 || PORTABLE40)
+#if !(NET20 || NET35 || PORTABLE40 || IOS)
         public class DictionaryDynamicObject : DynamicObject
         {
             public IDictionary<string, object> Values { get; private set; }
