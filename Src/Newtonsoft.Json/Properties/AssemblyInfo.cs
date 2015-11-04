@@ -96,3 +96,7 @@ using System.Security;
 [assembly: AssemblyVersion("6.0.0.0")]
 [assembly: AssemblyFileVersion("6.0.8.19013")]
 [assembly: CLSCompliant(true)]
+
+#if IOS
+[assembly:Newtonsoft.Json.Utilities.LinkerSafe]
+#endif

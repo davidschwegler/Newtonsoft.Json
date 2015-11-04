@@ -42,6 +42,9 @@ namespace Newtonsoft.Json.Utilities
         object UnderlyingCollection { get; }
     }
 
+#if IOS
+	[Preserve]
+#endif
     internal class CollectionWrapper<T> : ICollection<T>, IWrappedCollection
     {
         private readonly IList _list;

@@ -137,4 +137,27 @@ namespace Newtonsoft.Json.Utilities
             return value.ToString();
         }
     }
+
+#if IOS
+	[AttributeUsage(AttributeTargets.Assembly)]
+	public sealed class LinkerSafeAttribute : Attribute
+	{
+	}
+
+	[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum | AttributeTargets.Constructor | AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Event | AttributeTargets.Interface | AttributeTargets.Delegate, AllowMultiple = true)]
+	public sealed class PreserveAttribute : Attribute
+	{
+		public bool AllMembers;
+
+		public bool Conditional;
+
+		public PreserveAttribute()
+		{
+		}
+
+		public PreserveAttribute(Type type)
+		{
+		}
+	}
+#endif
 }
