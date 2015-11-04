@@ -94,7 +94,7 @@ using System.Security;
 // by using the '*' as shown below:
 
 [assembly: AssemblyVersion("6.0.0.0")]
-[assembly: AssemblyFileVersion("6.0.8.19013")]
+[assembly: AssemblyFileVersion("6.0.8.19103")]
 [assembly: CLSCompliant(true)]
 
 #if IOS
