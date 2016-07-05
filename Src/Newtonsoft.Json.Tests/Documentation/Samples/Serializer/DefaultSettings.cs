@@ -25,15 +25,18 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
 using NUnit.Framework;
+#endif
 using System.Runtime.Serialization;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
-using Autofac;
 using Newtonsoft.Json.Tests.Serialization;
-using System.Collections.Immutable;
 using Staff = Newtonsoft.Json.Tests.TestObjects.Employee;
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Serializer
@@ -44,32 +47,41 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Serializer
         [Test]
         public void Example()
         {
-            #region Usage
-            // settings will automatically be used by JsonConvert.SerializeObject/DeserializeObject
-            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
-            {
-                Formatting = Formatting.Indented,
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            };
+            string json;
 
-            Staff s = new Staff
+            try
             {
-                FirstName = "Eric",
-                LastName = "Example",
-                BirthDate = new DateTime(1980, 4, 20, 0, 0, 0, DateTimeKind.Utc),
-                Department = "IT",
-                JobTitle = "Web Dude"
-            };
+                #region Usage
+                // settings will automatically be used by JsonConvert.SerializeObject/DeserializeObject
+                JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+                {
+                    Formatting = Formatting.Indented,
+                    ContractResolver = new CamelCasePropertyNamesContractResolver()
+                };
 
-            string json = JsonConvert.SerializeObject(s);
-            // {
-            //   "firstName": "Eric",
-            //   "lastName": "Example",
-            //   "birthDate": "1980-04-20T00:00:00Z",
-            //   "department": "IT",
-            //   "jobTitle": "Web Dude"
-            // }
-            #endregion
+                Staff s = new Staff
+                {
+                    FirstName = "Eric",
+                    LastName = "Example",
+                    BirthDate = new DateTime(1980, 4, 20, 0, 0, 0, DateTimeKind.Utc),
+                    Department = "IT",
+                    JobTitle = "Web Dude"
+                };
+
+                json = JsonConvert.SerializeObject(s);
+                // {
+                //   "firstName": "Eric",
+                //   "lastName": "Example",
+                //   "birthDate": "1980-04-20T00:00:00Z",
+                //   "department": "IT",
+                //   "jobTitle": "Web Dude"
+                // }
+                #endregion
+            }
+            finally
+            {
+                JsonConvert.DefaultSettings = null;
+            }
 
             StringAssert.AreEqual(@"{
   ""firstName"": ""Eric"",

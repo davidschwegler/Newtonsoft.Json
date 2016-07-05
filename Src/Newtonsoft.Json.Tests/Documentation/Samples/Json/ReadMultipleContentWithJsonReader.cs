@@ -26,19 +26,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
-
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
@@ -67,7 +62,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
             while (true)
             {
                 if (!reader.Read())
+                {
                     break;
+                }
 
                 JsonSerializer serializer = new JsonSerializer();
                 Role role = serializer.Deserialize<Role>(reader);

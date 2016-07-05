@@ -24,11 +24,18 @@
 #endregion
 
 using Newtonsoft.Json.Linq;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
 using NUnit.Framework;
+#endif
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
+
+#if !NET20
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Linq
 {
@@ -52,7 +59,6 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Linq
             o["age"] = 59;
             o["employer"] = "Bill & Melinda Gates Foundation";
 
-
             HashSet<string> changedProperties = o.Annotation<HashSet<string>>();
             // age
             // employer
@@ -63,3 +69,5 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Linq
         }
     }
 }
+
+#endif

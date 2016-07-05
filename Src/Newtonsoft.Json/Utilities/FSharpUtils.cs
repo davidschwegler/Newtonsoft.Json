@@ -23,8 +23,8 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
+#if !(NET35 || NET20)
 using System.Threading;
-#if !(NET35 || NET20 || NETFX_CORE)
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -88,10 +88,10 @@ namespace Newtonsoft.Json.Utilities
 
                         Type fsharpType = fsharpCoreAssembly.GetType("Microsoft.FSharp.Reflection.FSharpType");
 
-                        MethodInfo isUnionMethodInfo = fsharpType.GetMethod("IsUnion", BindingFlags.Public | BindingFlags.Static);
+                        MethodInfo isUnionMethodInfo = GetMethodWithNonPublicFallback(fsharpType, "IsUnion", BindingFlags.Public | BindingFlags.Static);
                         IsUnion = JsonTypeReflector.ReflectionDelegateFactory.CreateMethodCall<object>(isUnionMethodInfo);
 
-                        MethodInfo getUnionCasesMethodInfo = fsharpType.GetMethod("GetUnionCases", BindingFlags.Public | BindingFlags.Static);
+                        MethodInfo getUnionCasesMethodInfo = GetMethodWithNonPublicFallback(fsharpType, "GetUnionCases", BindingFlags.Public | BindingFlags.Static);
                         GetUnionCases = JsonTypeReflector.ReflectionDelegateFactory.CreateMethodCall<object>(getUnionCasesMethodInfo);
 
                         Type fsharpValue = fsharpCoreAssembly.GetType("Microsoft.FSharp.Reflection.FSharpValue");
@@ -112,7 +112,7 @@ namespace Newtonsoft.Json.Utilities
 
                         _mapType = fsharpCoreAssembly.GetType("Microsoft.FSharp.Collections.FSharpMap`2");
 
-#if !(NETFX_CORE || PORTABLE)
+#if !(DOTNET || PORTABLE)
                         Thread.MemoryBarrier();
 #endif
                         _initialized = true;
@@ -121,9 +121,25 @@ namespace Newtonsoft.Json.Utilities
             }
         }
 
+        private static MethodInfo GetMethodWithNonPublicFallback(Type type, string methodName, BindingFlags bindingFlags)
+        {
+            MethodInfo methodInfo = type.GetMethod(methodName, bindingFlags);
+
+            // if no matching method then attempt to find with nonpublic flag
+            // this is required because in WinApps some methods are private but always using NonPublic breaks medium trust
+            // https://github.com/JamesNK/Newtonsoft.Json/pull/649
+            // https://github.com/JamesNK/Newtonsoft.Json/issues/821
+            if (methodInfo == null && (bindingFlags & BindingFlags.NonPublic) != BindingFlags.NonPublic)
+            {
+                methodInfo = type.GetMethod(methodName, bindingFlags | BindingFlags.NonPublic);
+            }
+
+            return methodInfo;
+        }
+
         private static MethodCall<object, object> CreateFSharpFuncCall(Type type, string methodName)
         {
-            MethodInfo innerMethodInfo = type.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
+            MethodInfo innerMethodInfo = GetMethodWithNonPublicFallback(type, methodName, BindingFlags.Public | BindingFlags.Static);
             MethodInfo invokeFunc = innerMethodInfo.ReturnType.GetMethod("Invoke", BindingFlags.Public | BindingFlags.Instance);
 
             MethodCall<object, object> call = JsonTypeReflector.ReflectionDelegateFactory.CreateMethodCall<object>(innerMethodInfo);
@@ -144,12 +160,12 @@ namespace Newtonsoft.Json.Utilities
         {
             MethodInfo seqType = _ofSeq.MakeGenericMethod(t);
 
-            return JsonTypeReflector.ReflectionDelegateFactory.CreateParametrizedConstructor(seqType);
+            return JsonTypeReflector.ReflectionDelegateFactory.CreateParameterizedConstructor(seqType);
         }
 
         public static ObjectConstructor<object> CreateMap(Type keyType, Type valueType)
         {
-            MethodInfo creatorDefinition = typeof (FSharpUtils).GetMethod("BuildMapCreator");
+            MethodInfo creatorDefinition = typeof(FSharpUtils).GetMethod("BuildMapCreator");
 
             MethodInfo creatorGeneric = creatorDefinition.MakeGenericMethod(keyType, valueType);
 
@@ -160,7 +176,7 @@ namespace Newtonsoft.Json.Utilities
         {
             Type genericMapType = _mapType.MakeGenericType(typeof(TKey), typeof(TValue));
             ConstructorInfo ctor = genericMapType.GetConstructor(new[] { typeof(IEnumerable<Tuple<TKey, TValue>>) });
-            ObjectConstructor<object> ctorDelegate = JsonTypeReflector.ReflectionDelegateFactory.CreateParametrizedConstructor(ctor);
+            ObjectConstructor<object> ctorDelegate = JsonTypeReflector.ReflectionDelegateFactory.CreateParameterizedConstructor(ctor);
 
             ObjectConstructor<object> creator = args =>
             {
@@ -175,4 +191,5 @@ namespace Newtonsoft.Json.Utilities
         }
     }
 }
+
 #endif

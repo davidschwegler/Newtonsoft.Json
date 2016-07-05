@@ -42,7 +42,8 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -115,14 +116,17 @@
     <Compile Include="FloatParseHandling.cs" />
     <Compile Include="FormatterAssemblyStyle.cs" />
     <Compile Include="Formatting.cs" />
+    <Compile Include="IArrayPool.cs" />
     <Compile Include="JsonConstructorAttribute.cs" />
     <Compile Include="JsonDictionaryAttribute.cs" />
     <Compile Include="JsonException.cs" />
     <Compile Include="JsonExtensionDataAttribute.cs" />
     <Compile Include="JsonPosition.cs" />
     <Compile Include="JsonRequiredAttribute.cs" />
+    <Compile Include="Linq\CommentHandling.cs" />
     <Compile Include="Linq\JPropertyDescriptor.cs" />
     <Compile Include="Linq\JPropertyKeyedCollection.cs" />
+    <Compile Include="Linq\JsonLoadSettings.cs" />
     <Compile Include="Linq\JsonMergeSettings.cs" />
     <Compile Include="Linq\JsonPath\ArrayIndexFilter.cs" />
     <Compile Include="Linq\JsonPath\ArrayMultipleIndexFilter.cs" />
@@ -135,6 +139,7 @@
     <Compile Include="Linq\JsonPath\QueryFilter.cs" />
     <Compile Include="Linq\JsonPath\ScanFilter.cs" />
     <Compile Include="Linq\MergeArrayHandling.cs" />
+    <Compile Include="Linq\MergeNullValueHandling.cs" />
     <Compile Include="MetadataPropertyHandling.cs" />
     <Compile Include="SerializationBinder.cs" />
     <Compile Include="Serialization\DiagnosticsTraceWriter.cs" />

@@ -28,15 +28,17 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;
+using System.Reflection;
 #if NET20
 using Newtonsoft.Json.Utilities.LinqBridge;
 #else
 using System.Linq;
 #endif
+using Newtonsoft.Json.Utilities;
 
 namespace Newtonsoft.Json.Tests.TestObjects
 {
-#if !(NETFX_CORE || NET35 || NET20 || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(NETFX_CORE || NET35 || NET20 || PORTABLE || PORTABLE40)
     [TypeConverter(typeof(MyInterfaceConverter))]
     internal interface IMyInterface
     {
@@ -48,10 +50,10 @@ namespace Newtonsoft.Json.Tests.TestObjects
     internal class MyInterfaceConverter : TypeConverter
     {
         private readonly List<IMyInterface> _writers = new List<IMyInterface>
-            {
-                new ConsoleWriter(),
-                new TraceWriter()
-            };
+        {
+            new ConsoleWriter(),
+            new TraceWriter()
+        };
 
         public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
         {
@@ -66,7 +68,9 @@ namespace Newtonsoft.Json.Tests.TestObjects
         public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
         {
             if (value == null)
+            {
                 return null;
+            }
 
             return (from w in _writers where w.Name == value.ToString() select w).FirstOrDefault();
         }
@@ -75,7 +79,9 @@ namespace Newtonsoft.Json.Tests.TestObjects
             Type destinationType)
         {
             if (value == null)
+            {
                 return null;
+            }
             return ((IMyInterface)value).Name;
         }
     }
@@ -121,21 +127,20 @@ namespace Newtonsoft.Json.Tests.TestObjects
     {
         private TypeConverter GetConverter(Type type)
         {
-            var converters = type.GetCustomAttributes(typeof(TypeConverterAttribute), true).Union(
+            var converters = ReflectionUtils.GetAttributes(type, typeof(TypeConverterAttribute), true).Union(
                 from t in type.GetInterfaces()
-                from c in t.GetCustomAttributes(typeof(TypeConverterAttribute), true)
+                from c in ReflectionUtils.GetAttributes(t, typeof(TypeConverterAttribute), true)
                 select c).Distinct();
 
             return
                 (from c in converters
-                 let converter =
-                     (TypeConverter)Activator.CreateInstance(Type.GetType(((TypeConverterAttribute)c).ConverterTypeName))
-                 where converter.CanConvertFrom(typeof(string))
-                       && converter.CanConvertTo(typeof(string))
-                 select converter)
+                    let converter =
+                        (TypeConverter)Activator.CreateInstance(Type.GetType(((TypeConverterAttribute)c).ConverterTypeName))
+                    where converter.CanConvertFrom(typeof(string))
+                          && converter.CanConvertTo(typeof(string))
+                    select converter)
                     .FirstOrDefault();
         }
-
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {

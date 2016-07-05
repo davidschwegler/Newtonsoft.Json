@@ -46,6 +46,7 @@ using Newtonsoft.Json.Tests.Serialization;
 using Newtonsoft.Json.Utilities.LinqBridge;
 #else
 using System.Linq;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Utilities
@@ -58,7 +59,7 @@ namespace Newtonsoft.Json.Tests.Utilities
         {
             ConstructorInfo constructor = typeof(OutAndRefTestClass).GetConstructors().Single(c => c.GetParameters().Count() == 1);
 
-            var creator = DynamicReflectionDelegateFactory.Instance.CreateParametrizedConstructor(constructor);
+            var creator = DynamicReflectionDelegateFactory.Instance.CreateParameterizedConstructor(constructor);
 
             object[] args = new object[] { "Input" };
             OutAndRefTestClass o = (OutAndRefTestClass)creator(args);
@@ -71,7 +72,7 @@ namespace Newtonsoft.Json.Tests.Utilities
         {
             ConstructorInfo constructor = typeof(OutAndRefTestClass).GetConstructors().Single(c => c.GetParameters().Count() == 2);
 
-            var creator = DynamicReflectionDelegateFactory.Instance.CreateParametrizedConstructor(constructor);
+            var creator = DynamicReflectionDelegateFactory.Instance.CreateParameterizedConstructor(constructor);
 
             object[] args = new object[] { "Input", false };
             OutAndRefTestClass o = (OutAndRefTestClass)creator(args);
@@ -85,7 +86,7 @@ namespace Newtonsoft.Json.Tests.Utilities
         {
             ConstructorInfo constructor = typeof(OutAndRefTestClass).GetConstructors().Single(c => c.GetParameters().Count() == 3);
 
-            var creator = DynamicReflectionDelegateFactory.Instance.CreateParametrizedConstructor(constructor);
+            var creator = DynamicReflectionDelegateFactory.Instance.CreateParameterizedConstructor(constructor);
 
             object[] args = new object[] { "Input", true, null };
             OutAndRefTestClass o = (OutAndRefTestClass)creator(args);

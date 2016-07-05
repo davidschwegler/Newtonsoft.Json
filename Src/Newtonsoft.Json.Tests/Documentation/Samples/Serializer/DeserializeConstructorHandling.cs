@@ -25,10 +25,16 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
 using NUnit.Framework;
+
+#endif
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Serializer
 {
@@ -47,7 +53,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Serializer
             public Website(Website website)
             {
                 if (website == null)
-                    throw new ArgumentNullException("website");
+                {
+                    throw new ArgumentNullException(nameof(website));
+                }
 
                 Url = website.Url;
             }
@@ -66,7 +74,7 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Serializer
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Console.WriteLine(ex.Message);
                 // Value cannot be null.
                 // Parameter name: website
             }

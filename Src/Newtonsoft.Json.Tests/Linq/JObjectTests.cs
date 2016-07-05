@@ -27,7 +27,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50)
+#if !(NET20 || NET35 || PORTABLE)
 using System.Numerics;
 #endif
 using Newtonsoft.Json.Serialization;
@@ -97,7 +97,9 @@ namespace Newtonsoft.Json.Tests.Linq
                 roles.Add(role);
 
                 if (!reader.Read())
+                {
                     break;
+                }
             }
 
             Assert.AreEqual(2, roles.Count);
@@ -121,7 +123,7 @@ namespace Newtonsoft.Json.Tests.Linq
 
             JToken o = JToken.Parse(json);
 
-            Assert.AreEqual("Apple", (string) o["Name"]);
+            Assert.AreEqual("Apple", (string)o["Name"]);
         }
 
         [Test]
@@ -499,7 +501,7 @@ Parameter name: arrayIndex");
             ExceptionAssert.Throws<JsonReaderException>(() => { JObject.Parse(@"{
     ""name"": ""James"",
     ]!#$THIS IS: BAD JSON![{}}}}]
-  }"); }, "Invalid property identifier character: ]. Path 'name', line 3, position 5.");
+  }"); }, "Invalid property identifier character: ]. Path 'name', line 3, position 4.");
         }
 
         [Test]
@@ -717,7 +719,7 @@ Parameter name: arrayIndex");
             Assert.AreEqual(p4, l[1]);
         }
 
-#if !(NET20 || NETFX_CORE || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(NET20 || PORTABLE || PORTABLE40)
         [Test]
         public void PropertyChanging()
         {
@@ -1693,7 +1695,7 @@ Parameter name: arrayIndex");
                 reader.Read();
 
                 JToken.ReadFrom(reader);
-            }, "Unexpected end of content while loading JObject. Path 'short.error.code', line 6, position 15.");
+            }, "Unexpected end of content while loading JObject. Path 'short.error.code', line 6, position 14.");
         }
 
 #if !(NETFX_CORE || PORTABLE || DNXCORE50 || PORTABLE40)
@@ -1788,7 +1790,7 @@ Parameter name: arrayIndex");
 }, 987987";
 
                 JObject o = JObject.Parse(json);
-            }, "Additional text encountered after finished reading JSON content: ,. Path '', line 10, position 2.");
+            }, "Additional text encountered after finished reading JSON content: ,. Path '', line 10, position 1.");
         }
 
         [Test]
@@ -1940,7 +1942,9 @@ Parameter name: arrayIndex");
                     o.WriteTo(writer);
                 }
                 else
+                {
                     token.WriteTo(writer);
+                }
             }
 
             public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
@@ -1976,6 +1980,22 @@ Parameter name: arrayIndex");
             var json = JsonConvert.SerializeObject(p, settings);
 
             Assert.AreEqual(@"{""foo"":""bar"",""name"":""Daniel Wertheim"",""birthDate"":""0001-01-01T00:00:00"",""lastModified"":""0001-01-01T00:00:00""}", json);
+        }
+
+        [Test]
+        public void Parse_NoComments()
+        {
+            string json = "{'prop':[1,2/*comment*/,3]}";
+
+            JObject o = JObject.Parse(json, new JsonLoadSettings
+            {
+                CommentHandling = CommentHandling.Ignore
+            });
+
+            Assert.AreEqual(3, o["prop"].Count());
+            Assert.AreEqual(1, (int)o["prop"][0]);
+            Assert.AreEqual(2, (int)o["prop"][1]);
+            Assert.AreEqual(3, (int)o["prop"][2]);
         }
     }
 }

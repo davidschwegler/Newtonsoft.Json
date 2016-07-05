@@ -25,7 +25,7 @@
 
 using System;
 using System.Collections.Generic;
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50)
+#if !(NET20 || NET35 || PORTABLE)
 using System.Numerics;
 #endif
 using System.Text;
@@ -56,6 +56,17 @@ namespace Newtonsoft.Json.Tests.Linq
     [TestFixture]
     public class JTokenTests : TestFixtureBase
     {
+        [Test]
+        public void DeepEqualsObjectOrder()
+        {
+            string ob1 = @"{""key1"":""1"",""key2"":""2""}";
+            string ob2 = @"{""key2"":""2"",""key1"":""1""}";
+
+            JObject j1 = JObject.Parse(ob1);
+            JObject j2 = JObject.Parse(ob2);
+            Assert.IsTrue(j1.DeepEquals(j2));
+        }
+
         [Test]
         public void ReadFrom()
         {
@@ -361,7 +372,7 @@ namespace Newtonsoft.Json.Tests.Linq
 
             Assert.AreEqual(5, (int)(new JValue(StringComparison.OrdinalIgnoreCase)));
 
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40)
             string bigIntegerText = "1234567899999999999999999999999999999999999999999999999999999999999990";
 
             Assert.AreEqual(BigInteger.Parse(bigIntegerText), (new JValue(BigInteger.Parse(bigIntegerText))).Value);
@@ -441,7 +452,7 @@ namespace Newtonsoft.Json.Tests.Linq
 #endif
             ExceptionAssert.Throws<ArgumentException>(() => { var i = (Uri)new JValue(true); }, "Can not convert Boolean to Uri.");
 
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40)
             ExceptionAssert.Throws<ArgumentException>(() => { var i = (new JValue(new Uri("http://www.google.com"))).ToObject<BigInteger>(); }, "Can not convert Uri to BigInteger.");
             ExceptionAssert.Throws<ArgumentException>(() => { var i = (JValue.CreateNull()).ToObject<BigInteger>(); }, "Can not convert Null to BigInteger.");
             ExceptionAssert.Throws<ArgumentException>(() => { var i = (new JValue(Guid.NewGuid())).ToObject<BigInteger>(); }, "Can not convert Guid to BigInteger.");
@@ -458,7 +469,7 @@ namespace Newtonsoft.Json.Tests.Linq
         [Test]
         public void ToObject()
         {
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50)
+#if !(NET20 || NET35 || PORTABLE)
             Assert.AreEqual((BigInteger)1, (new JValue(1).ToObject(typeof(BigInteger))));
             Assert.AreEqual((BigInteger)1, (new JValue(1).ToObject(typeof(BigInteger?))));
             Assert.AreEqual((BigInteger?)null, (JValue.CreateNull().ToObject(typeof(BigInteger?))));
@@ -515,7 +526,7 @@ namespace Newtonsoft.Json.Tests.Linq
             Assert.IsTrue(JToken.DeepEquals(new JValue((DateTimeOffset?)null), (JValue)(DateTimeOffset?)null));
 #endif
 
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40)
             // had to remove implicit casting to avoid user reference to System.Numerics.dll
             Assert.IsTrue(JToken.DeepEquals(new JValue(new BigInteger(1)), new JValue(new BigInteger(1))));
             Assert.IsTrue(JToken.DeepEquals(new JValue((BigInteger?)null), new JValue((BigInteger?)null)));
@@ -729,14 +740,14 @@ namespace Newtonsoft.Json.Tests.Linq
 
             JObject o = new JObject
             {
-                {"prop1", "value1"}
+                { "prop1", "value1" }
             };
 
             JToken t1 = a[1][0];
             JToken t2 = o["prop1"];
 
-            List<JToken> source = new List<JToken> {t1, t2};
-            
+            List<JToken> source = new List<JToken> { t1, t2 };
+
             List<JToken> ancestors = source.AncestorsAndSelf().ToList();
             Assert.AreEqual(6, ancestors.Count());
             Assert.AreEqual(t1, ancestors[0]);
@@ -760,7 +771,7 @@ namespace Newtonsoft.Json.Tests.Linq
 
             JObject o = new JObject
             {
-                {"prop1", "value1"}
+                { "prop1", "value1" }
             };
 
             JToken t1 = a[1][0];
@@ -809,7 +820,7 @@ namespace Newtonsoft.Json.Tests.Linq
 
             JObject o = new JObject
             {
-                {"prop1", "value1"}
+                { "prop1", "value1" }
             };
 
             List<JContainer> source = new List<JContainer> { a, o };
@@ -859,7 +870,7 @@ namespace Newtonsoft.Json.Tests.Linq
 
             JObject o = new JObject
             {
-                {"prop1", "value1"}
+                { "prop1", "value1" }
             };
 
             List<JContainer> source = new List<JContainer> { a, o };
@@ -1200,7 +1211,7 @@ namespace Newtonsoft.Json.Tests.Linq
 ],";
 
                 JToken.Parse(json);
-            }, "Additional text encountered after finished reading JSON content: ,. Path '', line 5, position 2.");
+            }, "Additional text encountered after finished reading JSON content: ,. Path '', line 5, position 1.");
         }
 
         [Test]
@@ -1239,6 +1250,22 @@ namespace Newtonsoft.Json.Tests.Linq
             Assert.AreEqual("", a.Path);
 
             Assert.AreEqual("[0]", a[0].Path);
+        }
+
+        [Test]
+        public void Parse_NoComments()
+        {
+            string json = "{'prop':[1,2/*comment*/,3]}";
+
+            JToken o = JToken.Parse(json, new JsonLoadSettings
+            {
+                CommentHandling = CommentHandling.Ignore
+            });
+
+            Assert.AreEqual(3, o["prop"].Count());
+            Assert.AreEqual(1, (int)o["prop"][0]);
+            Assert.AreEqual(2, (int)o["prop"][1]);
+            Assert.AreEqual(3, (int)o["prop"][2]);
         }
     }
 }

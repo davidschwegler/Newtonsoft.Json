@@ -30,7 +30,7 @@ using System.IO;
 #if NET20
 using Newtonsoft.Json.Utilities.LinqBridge;
 #endif
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50)
+#if !(NET20 || NET35 || PORTABLE)
 using System.Numerics;
 #endif
 using System.Text;
@@ -357,7 +357,7 @@ namespace Newtonsoft.Json.Tests
             Assert.IsNotNull(validationEventArgs);
         }
 
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40)
         [Test]
         public void IntegerGreaterThanMaximumValue_BigInteger()
         {
@@ -610,7 +610,7 @@ namespace Newtonsoft.Json.Tests
             Assert.IsNotNull(validationEventArgs);
         }
 
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40)
         [Test]
         public void BigIntegerDivisibleBy_Success()
         {
@@ -1323,11 +1323,11 @@ namespace Newtonsoft.Json.Tests
 
             Assert.IsTrue(reader.Read());
             Assert.AreEqual(JsonToken.Integer, reader.TokenType);
-            Assert.AreEqual("Invalid type. Expected String but got Integer. Line 4, position 10.", validationEventArgs.Message);
+            Assert.AreEqual("Invalid type. Expected String but got Integer. Line 4, position 9.", validationEventArgs.Message);
 
             Assert.IsTrue(reader.Read());
             Assert.AreEqual(JsonToken.PropertyName, reader.TokenType);
-            Assert.AreEqual("Property 'hey' has not been defined and the schema does not allow additional properties. Line 5, position 9.", validationEventArgs.Message);
+            Assert.AreEqual("Property 'hey' has not been defined and the schema does not allow additional properties. Line 5, position 8.", validationEventArgs.Message);
 
             Assert.IsTrue(reader.Read());
             Assert.AreEqual(JsonToken.String, reader.TokenType);
@@ -1432,7 +1432,7 @@ namespace Newtonsoft.Json.Tests
             Assert.AreEqual(JsonToken.String, reader.TokenType);
             Assert.AreEqual("secasecasecasecaseca", reader.Value.ToString());
             Assert.AreEqual(1, errors.Count);
-            Assert.AreEqual("secondproperty - String 'secasecasecasecaseca' exceeds maximum length of 10. Line 3, position 42.", errors[0]);
+            Assert.AreEqual("secondproperty - String 'secasecasecasecaseca' exceeds maximum length of 10. Line 3, position 41.", errors[0]);
 
             Assert.IsTrue(reader.Read());
             Assert.AreEqual(JsonToken.PropertyName, reader.TokenType);
@@ -1452,9 +1452,9 @@ namespace Newtonsoft.Json.Tests
             Assert.AreEqual(JsonToken.String, reader.TokenType);
             Assert.AreEqual("aaa", reader.Value.ToString());
             Assert.AreEqual(4, errors.Count);
-            Assert.AreEqual("thirdproperty.thirdproperty_firstproperty - String 'aaa' is less than minimum length of 7. Line 5, position 40.", errors[1]);
-            Assert.AreEqual("thirdproperty.thirdproperty_firstproperty - String 'aaa' does not match regex pattern 'hi'. Line 5, position 40.", errors[2]);
-            Assert.AreEqual("thirdproperty.thirdproperty_firstproperty - String 'aaa' does not match regex pattern 'hi2u'. Line 5, position 40.", errors[3]);
+            Assert.AreEqual("thirdproperty.thirdproperty_firstproperty - String 'aaa' is less than minimum length of 7. Line 5, position 39.", errors[1]);
+            Assert.AreEqual("thirdproperty.thirdproperty_firstproperty - String 'aaa' does not match regex pattern 'hi'. Line 5, position 39.", errors[2]);
+            Assert.AreEqual("thirdproperty.thirdproperty_firstproperty - String 'aaa' does not match regex pattern 'hi2u'. Line 5, position 39.", errors[3]);
 
             Assert.IsTrue(reader.Read());
             Assert.AreEqual(JsonToken.PropertyName, reader.TokenType);
@@ -1465,7 +1465,7 @@ namespace Newtonsoft.Json.Tests
             Assert.AreEqual(JsonToken.String, reader.TokenType);
             Assert.AreEqual("three", reader.Value.ToString());
             Assert.AreEqual(5, errors.Count);
-            Assert.AreEqual("thirdproperty.additional - String 'three' is less than minimum length of 6. Line 6, position 25.", errors[4]);
+            Assert.AreEqual("thirdproperty.additional - String 'three' is less than minimum length of 6. Line 6, position 24.", errors[4]);
 
             Assert.IsTrue(reader.Read());
             Assert.AreEqual(JsonToken.EndObject, reader.TokenType);
@@ -1753,4 +1753,5 @@ namespace Newtonsoft.Json.Tests
         }
     }
 }
+
 #pragma warning restore 618

@@ -37,6 +37,7 @@ using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Serialization
@@ -66,7 +67,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             //  ]
             //}
 
-            ExceptionAssert.Throws<JsonSerializationException>(() => { ProductShort deserializedProductShort = (ProductShort)JsonConvert.DeserializeObject(output, typeof(ProductShort), new JsonSerializerSettings { MissingMemberHandling = MissingMemberHandling.Error }); }, @"Could not find member 'Price' on object of type 'ProductShort'. Path 'Price', line 4, position 11.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => { ProductShort deserializedProductShort = (ProductShort)JsonConvert.DeserializeObject(output, typeof(ProductShort), new JsonSerializerSettings { MissingMemberHandling = MissingMemberHandling.Error }); }, @"Could not find member 'Price' on object of type 'ProductShort'. Path 'Price', line 4, position 10.");
         }
 
         [Test]
@@ -122,6 +123,16 @@ namespace Newtonsoft.Json.Tests.Serialization
 
             Assert.AreEqual(1, myClass.PreProperty);
             Assert.AreEqual(2, myClass.PostProperty);
+        }
+
+        [Test]
+        public void CaseInsensitive()
+        {
+            string json = @"{""height"":1}";
+
+            DoubleClass c = JsonConvert.DeserializeObject<DoubleClass>(json, new JsonSerializerSettings { MissingMemberHandling = MissingMemberHandling.Error });
+
+            Assert.AreEqual(1d, c.Height);
         }
 
         [Test]

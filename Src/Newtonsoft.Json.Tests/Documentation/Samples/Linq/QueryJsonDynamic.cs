@@ -23,13 +23,25 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 #endregion
 
+#if !(NET20 || NET35)
+
 using System;
 using System.Collections.Generic;
+#if NET20
+using Newtonsoft.Json.Utilities.LinqBridge;
+#else
 using System.Linq;
+#endif
 using System.Text;
-using System.Web;
 using Newtonsoft.Json.Linq;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
 using NUnit.Framework;
+
+#endif
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Linq
 {
@@ -77,3 +89,5 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Linq
         }
     }
 }
+
+#endif

@@ -47,6 +47,7 @@ using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Serialization
@@ -165,7 +166,7 @@ namespace Newtonsoft.Json.Tests.Serialization
 }";
 
                 JsonConvert.DeserializeObject<DynamicObject>(json, settings);
-            }, "Unable to find a default constructor to use for type System.Dynamic.DynamicObject. Path 'contributors', line 2, position 18.");
+            }, "Unable to find a default constructor to use for type System.Dynamic.DynamicObject. Path 'contributors', line 2, position 17.");
         }
 
         public class DictionaryDynamicObject : DynamicObject

@@ -48,6 +48,7 @@ using Newtonsoft.Json.Utilities.LinqBridge;
 using System.Linq;
 #endif
 using System.IO;
+using System.Runtime.Serialization;
 
 namespace Newtonsoft.Json.Tests.Linq
 {
@@ -171,11 +172,32 @@ namespace Newtonsoft.Json.Tests.Linq
 ]");
 
             JsonTextReader jsonReader = new JsonTextReader(textReader);
-            JArray a = (JArray)JToken.ReadFrom(jsonReader);
+            JArray a = (JArray)JToken.ReadFrom(jsonReader, new JsonLoadSettings
+            {
+                CommentHandling = CommentHandling.Load
+            });
 
             Assert.AreEqual(4, a.Count);
             Assert.AreEqual(JTokenType.Comment, a[0].Type);
             Assert.AreEqual(" hi", ((JValue)a[0]).Value);
+        }
+
+        [Test]
+        public void CommentsAndReadFrom_IgnoreComments()
+        {
+            StringReader textReader = new StringReader(@"[
+    // hi
+    1,
+    2,
+    3
+]");
+
+            JsonTextReader jsonReader = new JsonTextReader(textReader);
+            JArray a = (JArray)JToken.ReadFrom(jsonReader);
+
+            Assert.AreEqual(3, a.Count);
+            Assert.AreEqual(JTokenType.Integer, a[0].Type);
+            Assert.AreEqual(1L, ((JValue)a[0]).Value);
         }
 
         [Test]
@@ -190,11 +212,39 @@ namespace Newtonsoft.Json.Tests.Linq
 ]");
 
             JsonTextReader jsonReader = new JsonTextReader(textReader);
-            JValue v = (JValue)JToken.ReadFrom(jsonReader);
+            JValue v = (JValue)JToken.ReadFrom(jsonReader, new JsonLoadSettings
+            {
+                CommentHandling = CommentHandling.Load
+            });
 
             Assert.AreEqual(JTokenType.Comment, v.Type);
 
             IJsonLineInfo lineInfo = v;
+            Assert.AreEqual(true, lineInfo.HasLineInfo());
+            Assert.AreEqual(2, lineInfo.LineNumber);
+            Assert.AreEqual(5, lineInfo.LinePosition);
+        }
+
+        [Test]
+        public void StartingCommentAndReadFrom_IgnoreComments()
+        {
+            StringReader textReader = new StringReader(@"
+// hi
+[
+    1,
+    2,
+    3
+]");
+
+            JsonTextReader jsonReader = new JsonTextReader(textReader);
+            JArray a = (JArray)JToken.ReadFrom(jsonReader, new JsonLoadSettings
+            {
+                CommentHandling = CommentHandling.Ignore
+            });
+
+            Assert.AreEqual(JTokenType.Array, a.Type);
+
+            IJsonLineInfo lineInfo = a;
             Assert.AreEqual(true, lineInfo.HasLineInfo());
             Assert.AreEqual(3, lineInfo.LineNumber);
             Assert.AreEqual(1, lineInfo.LinePosition);
@@ -219,7 +269,7 @@ undefined
             IJsonLineInfo lineInfo = v;
             Assert.AreEqual(true, lineInfo.HasLineInfo());
             Assert.AreEqual(2, lineInfo.LineNumber);
-            Assert.AreEqual(10, lineInfo.LinePosition);
+            Assert.AreEqual(9, lineInfo.LinePosition);
         }
 
         [Test]
@@ -271,7 +321,7 @@ undefined
 
             JToken v1 = o["frameworks"]["dnxcore50"]["dependencies"]["System.Xml.ReaderWriter"]["source"];
 
-            Assert.AreEqual("frameworks.dnxcore50.dependencies.['System.Xml.ReaderWriter'].source", v1.Path);
+            Assert.AreEqual("frameworks.dnxcore50.dependencies['System.Xml.ReaderWriter'].source", v1.Path);
 
             JToken v2 = o.SelectToken(v1.Path);
 
@@ -673,7 +723,7 @@ keyword such as type of business.""
             Post p = new Post
             {
                 Title = "How to use FromObject",
-                Categories = new [] { "LINQ to JSON" }
+                Categories = new[] { "LINQ to JSON" }
             };
 
             // serialize Post to JSON then parse JSON – SLOW!
@@ -876,7 +926,7 @@ keyword such as type of business.""
             {
                 JArray a = new JArray();
                 Assert.AreEqual(null, a["purple"]);
-            }, @"Accessed JArray values with invalid key value: ""purple"". Array position index expected.");
+            }, @"Accessed JArray values with invalid key value: ""purple"". Int32 array index expected.");
         }
 
         [Test]
@@ -1061,8 +1111,8 @@ keyword such as type of business.""
       }
     ]
   }
-}", o.ToString()); 
-            
+}", o.ToString());
+
             CustomAssert.IsInstanceOfType(typeof(JObject), o);
             CustomAssert.IsInstanceOfType(typeof(JObject), o["channel"]);
             Assert.AreEqual("James Newton-King", (string)o["channel"]["title"]);
@@ -1235,7 +1285,7 @@ keyword such as type of business.""
   ""NullableGuid"": ""9e9f3adf-e017-4f72-91e0-617ebe85967d"",
   ""TimeSpan"": ""1.00:00:00"",
   ""NullableTimeSpan"": ""01:00:00"",
-  ""Uri"": ""http://testuri.com/""
+  ""Uri"": ""http://testuri.com""
 }", o.ToString());
 
             UriGuidTimeSpanTestClass c2 = o.ToObject<UriGuidTimeSpanTestClass>();
@@ -1244,6 +1294,10 @@ keyword such as type of business.""
             Assert.AreEqual(c1.TimeSpan, c2.TimeSpan);
             Assert.AreEqual(c1.NullableTimeSpan, c2.NullableTimeSpan);
             Assert.AreEqual(c1.Uri, c2.Uri);
+
+            string j = JsonConvert.SerializeObject(c1, Formatting.Indented);
+
+            StringAssert.AreEqual(j, o.ToString());
         }
 
         [Test]
@@ -1273,6 +1327,57 @@ keyword such as type of business.""
 
                 Assert.AreEqual(users["name2"], "Matthew Doig");
             }, "The best overloaded method match for 'System.Collections.Generic.IDictionary<string,string>.Add(string, string)' has some invalid arguments");
+        }
+#endif
+
+#if !(NET20)
+        [JsonConverter(typeof(StringEnumConverter))]
+        public enum FooBar
+        {
+            [EnumMember(Value = "SOME_VALUE")]
+            SomeValue,
+
+            [EnumMember(Value = "SOME_OTHER_VALUE")]
+            SomeOtherValue
+        }
+
+        public class MyObject
+        {
+            public FooBar FooBar { get; set; }
+        }
+
+        [Test]
+        public void ToObject_Enum_Converter()
+        {
+            JObject o = JObject.Parse("{'FooBar':'SOME_OTHER_VALUE'}");
+
+            FooBar e = o["FooBar"].ToObject<FooBar>();
+            Assert.AreEqual(FooBar.SomeOtherValue, e);
+        }
+
+        public enum FooBarNoEnum
+        {
+            [EnumMember(Value = "SOME_VALUE")]
+            SomeValue,
+
+            [EnumMember(Value = "SOME_OTHER_VALUE")]
+            SomeOtherValue
+        }
+
+        public class MyObjectNoEnum
+        {
+            public FooBarNoEnum FooBarNoEnum { get; set; }
+        }
+
+        [Test]
+        public void ToObject_Enum_NoConverter()
+        {
+            JObject o = JObject.Parse("{'FooBarNoEnum':'SOME_OTHER_VALUE'}");
+
+            ExceptionAssert.Throws<ArgumentException>(() =>
+            {
+                o["FooBarNoEnum"].ToObject<FooBarNoEnum>();
+            }, "Could not convert 'SOME_OTHER_VALUE' to FooBarNoEnum.");
         }
 #endif
 

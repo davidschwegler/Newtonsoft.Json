@@ -82,6 +82,7 @@
     <Compile Include="FloatParseHandling.cs" />
     <Compile Include="FormatterAssemblyStyle.cs" />
     <Compile Include="Formatting.cs" />
+    <Compile Include="IArrayPool.cs" />
     <Compile Include="IJsonLineInfo.cs" />
     <Compile Include="JsonArrayAttribute.cs" />
     <Compile Include="JsonConstructorAttribute.cs" />
@@ -109,6 +110,7 @@
     <Compile Include="JsonValidatingReader.cs" />
     <Compile Include="JsonWriter.cs" />
     <Compile Include="JsonWriterException.cs" />
+    <Compile Include="Linq\CommentHandling.cs" />
     <Compile Include="Linq\Extensions.cs" />
     <Compile Include="Linq\IJEnumerable.cs" />
     <Compile Include="Linq\JArray.cs" />
@@ -120,6 +122,7 @@
     <Compile Include="Linq\JPropertyDescriptor.cs" />
     <Compile Include="Linq\JPropertyKeyedCollection.cs" />
     <Compile Include="Linq\JRaw.cs" />
+    <Compile Include="Linq\JsonLoadSettings.cs" />
     <Compile Include="Linq\JsonMergeSettings.cs" />
     <Compile Include="Linq\JsonPath\ArrayIndexFilter.cs" />
     <Compile Include="Linq\JsonPath\ArrayMultipleIndexFilter.cs" />
@@ -138,6 +141,7 @@
     <Compile Include="Linq\JTokenWriter.cs" />
     <Compile Include="Linq\JValue.cs" />
     <Compile Include="Linq\MergeArrayHandling.cs" />
+    <Compile Include="Linq\MergeNullValueHandling.cs" />
     <Compile Include="MemberSerialization.cs" />
     <Compile Include="MetadataPropertyHandling.cs" />
     <Compile Include="MissingMemberHandling.cs" />
@@ -224,6 +228,7 @@
     <Compile Include="Utilities\ExpressionReflectionDelegateFactory.cs" />
     <Compile Include="Utilities\FSharpUtils.cs" />
     <Compile Include="Utilities\ILGeneratorExtensions.cs" />
+    <Compile Include="Utilities\ImmutableCollectionsUtils.cs" />
     <Compile Include="Utilities\JavaScriptUtils.cs" />
     <Compile Include="Utilities\JsonTokenUtils.cs" />
     <Compile Include="Utilities\LateBoundReflectionDelegateFactory.cs" />

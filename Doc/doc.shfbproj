@@ -36,7 +36,7 @@
     <HelpTitle>Json.NET Documentation</HelpTitle>
     <PresentationStyle>VS2013</PresentationStyle>
     <NamingMethod>MemberName</NamingMethod>
-    <DocumentationSourcePath>..\Src\Newtonsoft.Json\bin\Release\Net45</DocumentationSourcePath>
+    <DocumentationSourcePath>..\Working\Src\Newtonsoft.Json\bin\Release\Net45</DocumentationSourcePath>
     <DocumentationSources>
       <DocumentationSource sourceFile="$(DocumentationSourcePath)\Newtonsoft.Json.dll" />
       <DocumentationSource sourceFile="$(DocumentationSourcePath)\Newtonsoft.Json.xml" />
@@ -100,6 +100,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="icons\favicon.ico" />
+    <None Include="Samples\Linq\QueryJsonSelectTokenEscaped.aml" />
     <None Include="Samples\Serializer\JsonConstructorAttribute.aml" />
     <None Include="Samples\Json\ReadMultipleContentWithJsonReader.aml" />
     <None Include="Samples\Serializer\SerializeImmutableCollections.aml" />

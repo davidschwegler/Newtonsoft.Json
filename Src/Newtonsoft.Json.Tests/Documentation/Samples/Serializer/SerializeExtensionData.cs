@@ -25,9 +25,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
 using NUnit.Framework;
+#endif
 using System.Runtime.Serialization;
 using Newtonsoft.Json.Linq;
 
@@ -37,6 +42,7 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Serializer
     public class SerializeExtensionData : TestFixtureBase
     {
 #pragma warning disable 169
+
         #region Types
         public class CustomerInvoice
         {
@@ -48,6 +54,7 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Serializer
             private IDictionary<string, JToken> _additionalData;
         }
         #endregion
+
 #pragma warning restore 169
 
         [Test]

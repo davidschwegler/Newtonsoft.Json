@@ -435,7 +435,6 @@ Parameter name: index");
             }
         }
 
-
 #if !(NETFX_CORE || PORTABLE || DNXCORE50 || PORTABLE40)
         [Test]
         public void ITypedListGetItemProperties()
@@ -471,7 +470,7 @@ Parameter name: index");
             {
                 JArray a = new JArray();
                 a["badvalue"] = new JValue(3);
-            }, @"Set JArray values with invalid key value: ""badvalue"". Array position index expected.");
+            }, @"Set JArray values with invalid key value: ""badvalue"". Int32 array index expected.");
         }
 
         [Test]
@@ -526,7 +525,7 @@ Parameter name: index");
 ""Large""
 ], 987987";
 
-            ExceptionAssert.Throws<JsonReaderException>(() => { JArray.Parse(json); }, "Additional text encountered after finished reading JSON content: ,. Path '', line 5, position 2.");
+            ExceptionAssert.Throws<JsonReaderException>(() => { JArray.Parse(json); }, "Additional text encountered after finished reading JSON content: ,. Path '', line 5, position 1.");
         }
 
         [Test]
@@ -543,6 +542,38 @@ Parameter name: index");
             decks = (JArray)JObject.Parse(json)["decks"];
             l = decks.ToList();
             Assert.AreEqual(1, l.Count);
+        }
+
+        [Test]
+        public void Parse_NoComments()
+        {
+            string json = "[1,2/*comment*/,3]";
+
+            JArray a = JArray.Parse(json, new JsonLoadSettings
+            {
+                CommentHandling = CommentHandling.Ignore
+            });
+
+            Assert.AreEqual(3, a.Count);
+            Assert.AreEqual(1, (int)a[0]);
+            Assert.AreEqual(2, (int)a[1]);
+            Assert.AreEqual(3, (int)a[2]);
+        }
+
+        [Test]
+        public void Parse_LineInfo()
+        {
+            string json = "[1,2,3]";
+
+            JArray a = JArray.Parse(json, new JsonLoadSettings
+            {
+                LineInfoHandling = LineInfoHandling.Load
+            });
+
+            Assert.AreEqual(false, ((IJsonLineInfo)a).HasLineInfo());
+            Assert.AreEqual(false, ((IJsonLineInfo)a[0]).HasLineInfo());
+            Assert.AreEqual(false, ((IJsonLineInfo)a[1]).HasLineInfo());
+            Assert.AreEqual(false, ((IJsonLineInfo)a[2]).HasLineInfo());
         }
     }
 }

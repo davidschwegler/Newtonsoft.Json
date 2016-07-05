@@ -11,7 +11,8 @@ AppPackages/
 _ReSharper.*
 *.ReSharper.user
 *.resharper.user
-
-#NuGet
-packages
-!packages/repositories.config
+.vs/
+*.lock.json
+*.nuget.props
+*.nuget.targets
+*.orig

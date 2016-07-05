@@ -26,10 +26,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
 using NUnit.Framework;
-using File = System.IO.File;
+
+#endif
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Serializer
 {
@@ -64,6 +69,18 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Serializer
                 serializer.Serialize(file, movie);
             }
             #endregion
+        }
+
+        public static class File
+        {
+            public static StreamWriter CreateText(string path)
+            {
+                return new StreamWriter(new MemoryStream());
+            }
+
+            public static void WriteAllText(string s1, string s2)
+            {
+            }
         }
     }
 }

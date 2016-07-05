@@ -25,25 +25,25 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Xml;
 using Newtonsoft.Json.Linq;
-#if NETFX_CORE
-using Microsoft.VisualStudio.TestPlatform.UnitTestFramework;
-using TestFixture = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestClassAttribute;
-using Test = Microsoft.VisualStudio.TestPlatform.UnitTestFramework.TestMethodAttribute;
-#elif DNXCORE50
+#if DNXCORE50
 using Xunit;
 using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
+
+#if !(DNXCORE50 || NET20)
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
 {
+
     #region Types
     public class XmlJsonReader : JsonReader
     {
@@ -67,7 +67,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
         public override bool Read()
         {
             if (HandleValueType())
+            {
                 return true;
+            }
 
             while (_reader.Read())
             {
@@ -76,7 +78,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
                     case XmlNodeType.Element:
                         string typeName = _reader.GetAttribute("type");
                         if (typeName == null)
+                        {
                             throw new Exception("No type specified.");
+                        }
 
                         _valueType = (JTokenType)Enum.Parse(typeof(JTokenType), typeName, true);
 
@@ -102,25 +106,33 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
                                 SetToken(JsonToken.EndObject);
                                 _stateStack.Pop();
                                 if (PeekState() == JTokenType.Property)
+                                {
                                     _stateStack.Pop();
+                                }
                                 return true;
                             case JTokenType.Array:
                                 SetToken(JsonToken.EndArray);
                                 _stateStack.Pop();
                                 if (PeekState() == JTokenType.Property)
+                                {
                                     _stateStack.Pop();
+                                }
                                 return true;
                             case JTokenType.Constructor:
                                 SetToken(JsonToken.EndConstructor);
                                 _stateStack.Pop();
                                 if (PeekState() == JTokenType.Property)
+                                {
                                     _stateStack.Pop();
+                                }
                                 return true;
                         }
 
                         _stateStack.Pop();
                         if (PeekState() == JTokenType.Property)
+                        {
                             _stateStack.Pop();
+                        }
 
                         break;
                     case XmlNodeType.Text:
@@ -128,10 +140,10 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
                         switch (_valueType)
                         {
                             case JTokenType.Integer:
-                                SetToken(JsonToken.Integer, Convert.ToInt64(_reader.Value));
+                                SetToken(JsonToken.Integer, Convert.ToInt64(_reader.Value, CultureInfo.InvariantCulture));
                                 break;
                             case JTokenType.Float:
-                                SetToken(JsonToken.Float, Convert.ToDouble(_reader.Value));
+                                SetToken(JsonToken.Float, Convert.ToDouble(_reader.Value, CultureInfo.InvariantCulture));
                                 break;
                             case JTokenType.String:
                             case JTokenType.Uri:
@@ -140,10 +152,10 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
                                 SetToken(JsonToken.String, _reader.Value);
                                 break;
                             case JTokenType.Boolean:
-                                SetToken(JsonToken.Boolean, Convert.ToBoolean(_reader.Value));
+                                SetToken(JsonToken.Boolean, Convert.ToBoolean(_reader.Value, CultureInfo.InvariantCulture));
                                 break;
                             case JTokenType.Date:
-                                SetToken(JsonToken.Date, Convert.ToDateTime(_reader.Value));
+                                SetToken(JsonToken.Date, Convert.ToDateTime(_reader.Value, CultureInfo.InvariantCulture));
                                 break;
                             case JTokenType.Bytes:
                                 SetToken(JsonToken.Bytes, Convert.FromBase64String(_reader.Value));
@@ -170,7 +182,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
                     _valueType = null;
 
                     if (PeekState() == JTokenType.Property)
+                    {
                         _stateStack.Pop();
+                    }
                     return true;
                 case JTokenType.Object:
                     SetToken(JsonToken.StartObject);
@@ -185,7 +199,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
                 case JTokenType.Constructor:
                     string constructorName = _reader.GetAttribute("name");
                     if (constructorName == null)
+                    {
                         throw new Exception("No constructor name specified.");
+                    }
 
                     SetToken(JsonToken.StartConstructor, constructorName);
                     _stateStack.Push(JTokenType.Constructor);
@@ -198,7 +214,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
         public override int? ReadAsInt32()
         {
             if (!Read())
+            {
                 return null;
+            }
 
             return (Value != null) ? (int?)Convert.ToInt32(Value) : null;
         }
@@ -206,7 +224,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
         public override string ReadAsString()
         {
             if (!Read())
+            {
                 return null;
+            }
 
             return (string)Value;
         }
@@ -214,7 +234,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
         public override byte[] ReadAsBytes()
         {
             if (!Read())
+            {
                 return null;
+            }
 
             return (byte[])Value;
         }
@@ -222,7 +244,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
         public override decimal? ReadAsDecimal()
         {
             if (!Read())
+            {
                 return null;
+            }
 
             return (Value != null) ? (decimal?)Convert.ToDecimal(Value) : null;
         }
@@ -230,7 +254,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
         public override DateTime? ReadAsDateTime()
         {
             if (!Read())
+            {
                 return null;
+            }
 
             return (Value != null) ? (DateTime?)Convert.ToDateTime(Value) : null;
         }
@@ -238,7 +264,9 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
         public override DateTimeOffset? ReadAsDateTimeOffset()
         {
             if (!Read())
+            {
                 return null;
+            }
 
             return (Value != null) ? (DateTimeOffset?)Convert.ToDateTime(Value) : null;
         }
@@ -483,3 +511,5 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Json
         }
     }
 }
+
+#endif

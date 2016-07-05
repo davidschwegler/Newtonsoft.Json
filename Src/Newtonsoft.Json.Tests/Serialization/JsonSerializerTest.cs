@@ -29,7 +29,7 @@ using System.ComponentModel;
 using System.Collections.Concurrent;
 #endif
 using System.Collections.Generic;
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50)
+#if !(NET20 || NET35 || PORTABLE)
 using System.Numerics;
 #endif
 #if !(NET20 || NETFX_CORE || DNXCORE50)
@@ -59,10 +59,11 @@ using System.Collections;
 using System.Xml;
 using System.Xml.Serialization;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using Newtonsoft.Json.Bson;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Converters;
-#if !NET20
+#if !(NET20 || NET35)
 using System.Runtime.Serialization.Json;
 #endif
 using Newtonsoft.Json.Serialization;
@@ -87,7 +88,7 @@ using System.Linq;
 #endif
 #if !(NETFX_CORE || DNXCORE50)
 using System.Drawing;
-using System.Diagnostics;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Serialization
@@ -95,6 +96,272 @@ namespace Newtonsoft.Json.Tests.Serialization
     [TestFixture]
     public class JsonSerializerTest : TestFixtureBase
     {
+        public class ErroringClass
+        {
+            public DateTime Tags { get; set; }
+        }
+
+        [Test]
+        public void DontCloseInputOnDeserializeError()
+        {
+            using (var s = System.IO.File.OpenRead("large.json"))
+            {
+                try
+                {
+                    using (JsonTextReader reader = new JsonTextReader(new StreamReader(s)))
+                    {
+                        reader.SupportMultipleContent = true;
+                        reader.CloseInput = false;
+
+                        // read into array
+                        reader.Read();
+
+                        var ser = new JsonSerializer();
+                        ser.CheckAdditionalContent = false;
+
+                        ser.Deserialize<IList<ErroringClass>>(reader);
+                    }
+
+                    Assert.Fail();
+                }
+                catch (Exception)
+                {
+                    Assert.IsTrue(s.Position > 0);
+
+                    s.Seek(0, SeekOrigin.Begin);
+
+                    Assert.AreEqual(0, s.Position);
+                }
+            }
+        }
+
+        public interface ISubclassBase
+        {
+            int ID { get; set; }
+            string Name { get; set; }
+            bool P1 { get; }
+        }
+
+        public interface ISubclass : ISubclassBase
+        {
+            new bool P1 { get; set; }
+            int P2 { get; set; }
+        }
+
+        public interface IMainClass
+        {
+            int ID { get; set; }
+            string Name { get; set; }
+            ISubclass Subclass { get; set; }
+        }
+
+        public class Subclass : ISubclass
+        {
+            public int ID { get; set; }
+            public string Name { get; set; }
+            public bool P1 { get; set; }
+            public int P2 { get; set; }
+        }
+
+        public class MainClass : IMainClass
+        {
+            public int ID { get; set; }
+            public string Name { get; set; }
+            public ISubclass Subclass { get; set; }
+        }
+
+        public class MyFactory
+        {
+            public static ISubclass InstantiateSubclass()
+            {
+                return new Subclass
+                {
+                    ID = 123,
+                    Name = "ABC",
+                    P1 = true,
+                    P2 = 44
+                };
+            }
+
+            public static IMainClass InstantiateManiClass()
+            {
+                return new MainClass
+                {
+                    ID = 567,
+                    Name = "XYZ",
+                    Subclass = InstantiateSubclass()
+                };
+            }
+        }
+
+        [Test]
+        public void SerializeInterfaceWithHiddenProperties()
+        {
+            var mySubclass = MyFactory.InstantiateSubclass();
+            var myMainClass = MyFactory.InstantiateManiClass();
+
+            //Class implementing interface with hidden members - flat object. 
+            var strJsonSubclass = JsonConvert.SerializeObject(mySubclass, Formatting.Indented);
+
+            StringAssert.AreEqual(@"{
+  ""ID"": 123,
+  ""Name"": ""ABC"",
+  ""P1"": true,
+  ""P2"": 44
+}", strJsonSubclass);
+
+            //Class implementing interface with hidden members - member of another class. 
+            var strJsonMainClass = JsonConvert.SerializeObject(myMainClass, Formatting.Indented);
+
+            StringAssert.AreEqual(@"{
+  ""ID"": 567,
+  ""Name"": ""XYZ"",
+  ""Subclass"": {
+    ""ID"": 123,
+    ""Name"": ""ABC"",
+    ""P1"": true,
+    ""P2"": 44
+  }
+}", strJsonMainClass);
+        }
+
+#if !(PORTABLE || PORTABLE40 || NET20 || NET35)
+        [Test]
+        public void LargeIntegerAsString()
+        {
+            var largeBrokenNumber = JsonConvert.DeserializeObject<Foo64>("{\"Blah\": 43443333222211111117 }");
+            Assert.AreEqual("43443333222211111117", largeBrokenNumber.Blah);
+
+            var largeOddWorkingNumber = JsonConvert.DeserializeObject<Foo64>("{\"Blah\": 53443333222211111117 }");
+            Assert.AreEqual("53443333222211111117", largeOddWorkingNumber.Blah);
+        }
+
+        public class Foo64
+        {
+            public string Blah { get; set; }
+        }
+#endif
+
+#if !NET20
+        [Test]
+        public void DeserializeMSDateTimeOffset()
+        {
+            DateTimeOffset d = JsonConvert.DeserializeObject<DateTimeOffset>(@"""/Date(1418924498000+0800)/""");
+            long initialTicks = DateTimeUtils.ConvertDateTimeToJavaScriptTicks(d.DateTime, d.Offset);
+
+            Assert.AreEqual(1418924498000, initialTicks);
+            Assert.AreEqual(8, d.Offset.Hours);
+        }
+#endif
+
+        [Test]
+        public void DeserializeBoolean_Null()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(
+                () => JsonConvert.DeserializeObject<IList<bool>>(@"[null]"),
+                "Error converting value {null} to type 'System.Boolean'. Path '[0]', line 1, position 5.");
+        }
+
+        [Test]
+        public void DeserializeBoolean_DateTime()
+        {
+            ExceptionAssert.Throws<JsonReaderException>(
+                () => JsonConvert.DeserializeObject<IList<bool>>(@"['2000-12-20T10:55:55Z']"),
+                "Could not convert string to boolean: 2000-12-20T10:55:55Z. Path '[0]', line 1, position 23.");
+        }
+
+        [Test]
+        public void DeserializeBoolean_BadString()
+        {
+            ExceptionAssert.Throws<JsonReaderException>(
+                () => JsonConvert.DeserializeObject<IList<bool>>(@"['pie']"),
+                @"Could not convert string to boolean: pie. Path '[0]', line 1, position 6.");
+        }
+
+        [Test]
+        public void DeserializeBoolean_EmptyString()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(
+                () => JsonConvert.DeserializeObject<IList<bool>>(@"['']"),
+                @"Error converting value {null} to type 'System.Boolean'. Path '[0]', line 1, position 3.");
+        }
+
+#if !(PORTABLE || PORTABLE40 || NET35 || NET20)
+        [Test]
+        public void DeserializeBooleans()
+        {
+            IList<bool> l = JsonConvert.DeserializeObject<IList<bool>>(@"[
+  1,
+  0,
+  1.1,
+  0.0,
+  0.000000000001,
+  9999999999,
+  -9999999999,
+  9999999999999999999999999999999999999999999999999999999999999999999999,
+  -9999999999999999999999999999999999999999999999999999999999999999999999,
+  'true',
+  'TRUE',
+  'false',
+  'FALSE'
+]");
+
+            int i = 0;
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(false, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(false, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(false, l[i++]);
+            Assert.AreEqual(false, l[i++]);
+        }
+
+        [Test]
+        public void DeserializeNullableBooleans()
+        {
+            IList<bool?> l = JsonConvert.DeserializeObject<IList<bool?>>(@"[
+  1,
+  0,
+  1.1,
+  0.0,
+  0.000000000001,
+  9999999999,
+  -9999999999,
+  9999999999999999999999999999999999999999999999999999999999999999999999,
+  -9999999999999999999999999999999999999999999999999999999999999999999999,
+  'true',
+  'TRUE',
+  'false',
+  'FALSE',
+  '',
+  null
+]");
+
+            int i = 0;
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(false, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(false, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(true, l[i++]);
+            Assert.AreEqual(false, l[i++]);
+            Assert.AreEqual(false, l[i++]);
+            Assert.AreEqual(null, l[i++]);
+            Assert.AreEqual(null, l[i++]);
+        }
+#endif
+
         [Test]
         public void CaseInsensitiveRequiredPropertyConstructorCreation()
         {
@@ -128,25 +395,84 @@ namespace Newtonsoft.Json.Tests.Serialization
         [Test]
         public void CoercedEmptyStringWithRequired()
         {
-            ExceptionAssert.Throws<JsonSerializationException>(() =>
-            {
-                JsonConvert.DeserializeObject<Binding>("{requiredProperty:''}");
-            }, "Required property 'RequiredProperty' expects a value but got null. Path '', line 1, position 21.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<Binding>("{requiredProperty:''}"); }, "Required property 'RequiredProperty' expects a value but got null. Path '', line 1, position 21.");
+        }
+
+        [Test]
+        public void CoercedEmptyStringWithRequired_DisallowNull()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<Binding_DisallowNull>("{requiredProperty:''}"); }, "Required property 'RequiredProperty' expects a non-null value. Path '', line 1, position 21.");
+        }
+
+        [Test]
+        public void DisallowNull_NoValue()
+        {
+            Binding_DisallowNull o = JsonConvert.DeserializeObject<Binding_DisallowNull>("{}");
+            Assert.IsNull(o.RequiredProperty);
         }
 
         [Test]
         public void CoercedEmptyStringWithRequiredConstructor()
         {
-            ExceptionAssert.Throws<JsonSerializationException>(() =>
-            {
-                JsonConvert.DeserializeObject<FooRequired>("{Bars:''}");
-            }, "Required property 'Bars' expects a value but got null. Path '', line 1, position 9.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<FooRequired>("{Bars:''}"); }, "Required property 'Bars' expects a value but got null. Path '', line 1, position 9.");
+        }
+
+        public class IgnoredProperty
+        {
+            [JsonIgnore]
+            [JsonProperty(Required = Required.Always)]
+            public string StringProp1 { get; set; }
+
+            [JsonIgnore]
+            public string StringProp2 { get; set; }
+        }
+
+        [Test]
+        public void NoErrorWhenValueDoesNotMatchIgnoredProperty()
+        {
+            IgnoredProperty p = JsonConvert.DeserializeObject<IgnoredProperty>("{'StringProp1':[1,2,3],'StringProp2':{}}");
+            Assert.IsNull(p.StringProp1);
+            Assert.IsNull(p.StringProp2);
         }
 
         public class Binding
         {
             [JsonProperty(Required = Required.Always)]
             public Binding RequiredProperty { get; set; }
+        }
+
+        public class Binding_DisallowNull
+        {
+            [JsonProperty(Required = Required.DisallowNull)]
+            public Binding RequiredProperty { get; set; }
+        }
+
+        [Test]
+        public void Serialize_Required_DisallowedNull()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.SerializeObject(new Binding_DisallowNull()); }, "Cannot write a null value for property 'RequiredProperty'. Property requires a non-null value. Path ''.");
+        }
+
+        [Test]
+        public void Serialize_Required_DisallowedNull_NullValueHandlingIgnore()
+        {
+            string json = JsonConvert.SerializeObject(new Binding_DisallowNull(), new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
+            Assert.AreEqual("{}", json);
+        }
+
+        [JsonObject(ItemRequired = Required.DisallowNull)]
+        public class DictionaryWithNoNull
+        {
+            public string Name { get; set; }
+        }
+
+        [Test]
+        public void Serialize_ItemRequired_DisallowedNull()
+        {
+            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.SerializeObject(new DictionaryWithNoNull()); }, "Cannot write a null value for property 'Name'. Property requires a non-null value. Path ''.");
         }
 
         public class DictionaryKeyContractResolver : DefaultContractResolver
@@ -158,7 +484,11 @@ namespace Newtonsoft.Json.Tests.Serialization
 
             protected override string ResolvePropertyName(string propertyName)
             {
+#if DNXCORE50
+                return propertyName.ToUpperInvariant();
+#else
                 return propertyName.ToUpper(CultureInfo.InvariantCulture);
+#endif
             }
         }
 
@@ -194,6 +524,10 @@ namespace Newtonsoft.Json.Tests.Serialization
         [Test]
         public void IncompleteContainers()
         {
+            ExceptionAssert.Throws<JsonSerializationException>(
+                 () => JsonConvert.DeserializeObject<IList<object>>("[1,"),
+                 "Unexpected end when deserializing array. Path '[0]', line 1, position 3.");
+
             ExceptionAssert.Throws<JsonSerializationException>(
                 () => JsonConvert.DeserializeObject<IList<int>>("[1,"),
                 "Unexpected end when deserializing array. Path '[0]', line 1, position 3.");
@@ -318,10 +652,13 @@ namespace Newtonsoft.Json.Tests.Serialization
         {
             [JsonIgnore]
             public Version IgnoredProperty { get; set; }
+
             [JsonIgnore]
             public List<Version> IgnoredList { get; set; }
+
             [JsonIgnore]
             public Dictionary<string, Version> IgnoredDictionary { get; set; }
+
             [JsonProperty(Required = Required.Always)]
             public string Name { get; set; }
         }
@@ -331,7 +668,9 @@ namespace Newtonsoft.Json.Tests.Serialization
             public override JsonContract ResolveContract(Type type)
             {
                 if (type == typeof(Version))
+                {
                     throw new Exception("Error!");
+                }
 
                 return base.ResolveContract(type);
             }
@@ -566,7 +905,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             public int ChildId;
         }
 
-#if !(NET20 || NET35 || PORTABLE40 || PORTABLE || DNXCORE50)
+#if !(NET20 || NET35 || PORTABLE40 || PORTABLE)
         [Test]
         public void ReadIntegerWithError()
         {
@@ -594,6 +933,14 @@ namespace Newtonsoft.Json.Tests.Serialization
             Assert.AreEqual("2", s[1]);
         }
 #endif
+
+        [Test]
+        public void DeserializeBoolAsStringInDictionary()
+        {
+            Dictionary<string, string> d = JsonConvert.DeserializeObject<Dictionary<string, string>>("{\"Test1\":false}");
+            Assert.AreEqual(1, d.Count);
+            Assert.AreEqual("false", d["Test1"]);
+        }
 
 #if !NET20
         [Test]
@@ -676,7 +1023,6 @@ namespace Newtonsoft.Json.Tests.Serialization
 
             protected SimpleResponse()
             {
-
             }
 
             protected SimpleResponse(string message)
@@ -758,6 +1104,26 @@ namespace Newtonsoft.Json.Tests.Serialization
         }
 
         [Test]
+        public void DeserializeVersionString()
+        {
+            string json = "['1.2.3.4']";
+            List<Version> deserialized = JsonConvert.DeserializeObject<List<Version>>(json);
+
+            Assert.AreEqual(1, deserialized[0].Major);
+            Assert.AreEqual(2, deserialized[0].Minor);
+            Assert.AreEqual(3, deserialized[0].Build);
+            Assert.AreEqual(4, deserialized[0].Revision);
+        }
+
+        [Test]
+        public void DeserializeVersionString_Fail()
+        {
+            string json = "['1.2.3.4444444444444444444444']";
+
+            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<List<Version>>(json); }, @"Error converting value ""1.2.3.4444444444444444444444"" to type 'System.Version'. Path '[0]', line 1, position 31.");
+        }
+
+        [Test]
         public void DeserializeJObjectWithComments()
         {
             string json = @"/* Test */
@@ -774,10 +1140,9 @@ namespace Newtonsoft.Json.Tests.Serialization
             Assert.AreEqual(3, o.Count);
             Assert.AreEqual(true, (bool)o["A"]);
             Assert.AreEqual(false, (bool)o["B"]);
-            Assert.AreEqual(3, o["C"].Count());
-            Assert.AreEqual(JTokenType.Comment, o["C"][0].Type);
-            Assert.AreEqual(1, (int)o["C"][1]);
-            Assert.AreEqual(JTokenType.Comment, o["C"][2].Type);
+            Assert.AreEqual(1, o["C"].Count());
+            Assert.AreEqual(1, (int)o["C"][0]);
+
             Assert.IsTrue(JToken.DeepEquals(o, JObject.Parse(json)));
 
             json = @"{/* Test */}";
@@ -1151,7 +1516,9 @@ namespace Newtonsoft.Json.Tests.Serialization
             private void OnDeserializedMethod(StreamingContext context)
             {
                 if (_serializationInfo == null)
+                {
                     return;
+                }
 
                 _stringValue = _serializationInfo.GetString("stringValue");
                 _intValue = _serializationInfo.GetInt32("intValue");
@@ -1356,7 +1723,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             Assert.AreEqual("value", deserialized.foo.bar);
         }
 
-#if !(NETFX_CORE || DNXCORE50)
+#if !(NETFX_CORE)
         [Test]
         public void ConversionOperator()
         {
@@ -1405,7 +1772,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             }
         }
 
-#if !NET20
+#if !(NET20 || NET35)
         [DataContract]
         public class BaseDataContractWithHidden
         {
@@ -1442,7 +1809,7 @@ namespace Newtonsoft.Json.Tests.Serialization
         }
 
         // ignore hiding members compiler warning
-#pragma warning disable 108,114
+#pragma warning disable 108, 114
         [DataContract]
         public class BaseWithContract
         {
@@ -1520,7 +1887,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             [DataMember(Name = "VirtualWithDataMemberSub")]
             public virtual string VirtualWithDataMember { get; set; }
         }
-#pragma warning restore 108,114
+#pragma warning restore 108, 114
 
         [Test]
         public void SubWithoutContractNewPropertiesTest()
@@ -1746,7 +2113,7 @@ namespace Newtonsoft.Json.Tests.Serialization
 
             string jsonText = JsonConvert.SerializeObject(testDictionary);
 
-#if !NET20
+#if !(NET20 || NET35)
             MemoryStream ms = new MemoryStream();
             DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(Dictionary<string, object>));
             serializer.WriteObject(ms, testDictionary);
@@ -1970,7 +2337,15 @@ keyword such as type of business.""
             ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.SerializeObject(new BadJsonPropertyClass()); }, @"A member with the name 'pie' already exists on 'Newtonsoft.Json.Tests.TestObjects.BadJsonPropertyClass'. Use the JsonPropertyAttribute to specify another name.");
         }
 
-#if !NET20
+        [Test]
+        public void InvalidBackslash()
+        {
+            string json = @"[""vvv\jvvv""]";
+
+            ExceptionAssert.Throws<JsonReaderException>(() => { JsonConvert.DeserializeObject<List<string>>(json); }, @"Bad JSON escape sequence: \j. Path '', line 1, position 7.");
+        }
+
+#if !(NET20 || NET35)
         [Test]
         public void Unicode()
         {
@@ -2005,14 +2380,6 @@ keyword such as type of business.""
 #if !(NETFX_CORE || DNXCORE50)
             Assert.AreEqual(javaScriptSerializerResult[0], jsonNetResult[0]);
 #endif
-        }
-
-        [Test]
-        public void InvalidBackslash()
-        {
-            string json = @"[""vvv\jvvv""]";
-
-            ExceptionAssert.Throws<JsonReaderException>(() => { JsonConvert.DeserializeObject<List<string>>(json); }, @"Bad JSON escape sequence: \j. Path '', line 1, position 7.");
         }
 
         [Test]
@@ -2571,7 +2938,6 @@ keyword such as type of business.""
             Assert.AreEqual("[1,2,3,4,5]", personRaw.RawContent.ToString());
             Assert.AreEqual("LastNameValue", personRaw.LastName);
         }
-
 
         [Test]
         public void DeserializeNullableMember()
@@ -3505,9 +3871,9 @@ Path '', line 1, position 1.");
         {
             string json = @"[]";
 
-            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<double>(json); }, @"Cannot deserialize the current JSON array (e.g. [1,2,3]) into type 'System.Double' because the type requires a JSON primitive value (e.g. string, number, boolean, null) to deserialize correctly.
-To fix this error either change the JSON to a JSON primitive value (e.g. string, number, boolean, null) or change the deserialized type to an array or a type that implements a collection interface (e.g. ICollection, IList) like List<T> that can be deserialized from a JSON array. JsonArrayAttribute can also be added to the type to force it to deserialize from a JSON array.
-Path '', line 1, position 1.");
+            ExceptionAssert.Throws<JsonReaderException>(
+                () => { JsonConvert.DeserializeObject<double>(json); },
+                @"Unexpected character encountered while parsing value: [. Path '', line 1, position 1.");
         }
 
 #if !(NET35 || NET20 || PORTABLE40)
@@ -3943,7 +4309,6 @@ Path '', line 1, position 1.");
             string Value { get; set; }
         }
 
-
         public class KeyValueId : IKeyValueId
         {
             public int Id { get; set; }
@@ -3976,9 +4341,13 @@ Path '', line 1, position 1.");
                     var item = this[id];
 
                     if (item == null)
+                    {
                         Add(value);
+                    }
                     else
+                    {
                         _dict1[item.Key] = value;
+                    }
                 }
             }
 
@@ -3993,7 +4362,9 @@ Path '', line 1, position 1.");
                 set
                 {
                     foreach (var item in value)
+                    {
                         Add(item);
+                    }
                 }
             }
         }
@@ -4255,7 +4626,7 @@ Path '', line 1, position 1.");
             public string Ethnicity { get; set; }
         }
 
-#if !NET20
+#if !(NET20 || NET35)
         public class DataContractJsonSerializerTestClass
         {
             public TimeSpan TimeSpanProperty { get; set; }
@@ -4302,7 +4673,7 @@ Path '', line 1, position 1.");
             {
                 if (dictionary == null)
                 {
-                    throw new ArgumentNullException("dictionary");
+                    throw new ArgumentNullException(nameof(dictionary));
                 }
 
                 foreach (var entry in dictionary)
@@ -4752,7 +5123,7 @@ Path '', line 1, position 1.");
 }", json);
         }
 
-#if !(PORTABLE || DNXCORE50)
+#if !(PORTABLE)
         [Test]
         public void DeserializeClassWithInheritedProtectedMember()
         {
@@ -5013,9 +5384,13 @@ Path '', line 1, position 1.");
                 Pos p = (Pos)value;
 
                 if (p != null)
+                {
                     writer.WriteRawValue(String.Format("new Pos({0},{1})", p.X, p.Y));
+                }
                 else
+                {
                     writer.WriteNull();
+                }
             }
 
             public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
@@ -5036,9 +5411,13 @@ Path '', line 1, position 1.");
                 PosDouble p = (PosDouble)value;
 
                 if (p != null)
+                {
                     writer.WriteRawValue(String.Format(CultureInfo.InvariantCulture, "new PosD({0},{1})", p.X, p.Y));
+                }
                 else
+                {
                     writer.WriteNull();
+                }
             }
 
             public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
@@ -5068,7 +5447,7 @@ Path '', line 1, position 1.");
 
             var json = JsonConvert.SerializeObject(child, Formatting.Indented);
 
-            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<Dictionary<string, object>>(json); }, "Additional content found in JSON reference object. A JSON reference object should only have a $ref property. Path 'Father.$id', line 6, position 11.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<Dictionary<string, object>>(json); }, "Additional content found in JSON reference object. A JSON reference object should only have a $ref property. Path 'Father.$id', line 6, position 10.");
         }
 
         [Test]
@@ -5089,7 +5468,7 @@ Path '', line 1, position 1.");
 
                 var json = JsonConvert.SerializeObject(child, Formatting.Indented);
                 JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-            }, "JSON reference $ref property must have a string or null value. Path 'Father.$ref', line 5, position 14.");
+            }, "JSON reference $ref property must have a string or null value. Path 'Father.$ref', line 5, position 13.");
         }
 
         [Test]
@@ -5156,8 +5535,6 @@ Path '', line 1, position 1.");
             Assert.AreEqual(typeof(decimal), dic["value"].GetType());
             Assert.AreEqual(9.9m, dic["value"]);
         }
-
-
 
         public class DictionaryKey
         {
@@ -5310,7 +5687,7 @@ Path '', line 1, position 1.");
             }
             else
             {
-                ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<StringDictionaryTestClass>(json); }, "Cannot create and populate list type " + classRef + ". Path 'StringDictionaryProperty', line 2, position 32.");
+                ExceptionAssert.Throws<JsonSerializationException>(() => { JsonConvert.DeserializeObject<StringDictionaryTestClass>(json); }, "Cannot create and populate list type " + classRef + ". Path 'StringDictionaryProperty', line 2, position 31.");
             }
         }
 #endif
@@ -5361,7 +5738,7 @@ Path '', line 1, position 1.");
 
             JsonTextReader reader = new JsonTextReader(new StringReader(serializeObject));
             reader.DateParseHandling = DateParseHandling.None;
-            
+
             JsonSerializer serializer = new JsonSerializer();
 
             var deserializeObject = serializer.Deserialize<TimeZoneOffsetObject>(reader);
@@ -5670,7 +6047,6 @@ Path '', line 1, position 1.");
             Assert.AreEqual(deserialized.Foo1.Name, "foo 1");
             Assert.AreEqual(deserialized.Foo2, null);
         }
-
 
         private static NullableStructPropertyClass deserialize(string serStr)
         {
@@ -6471,20 +6847,20 @@ Path '', line 1, position 1.");
             serializer.TypeNameHandling = TypeNameHandling.All;
 
             byte[] objectBytes;
-            using (MemoryStream bsonStream = new MemoryStream())
-            using (JsonWriter bsonWriter = new JsonTextWriter(new StreamWriter(bsonStream)))
+            using (MemoryStream stream = new MemoryStream())
+            using (JsonWriter jsonWriter = new JsonTextWriter(new StreamWriter(stream)))
             {
-                serializer.Serialize(bsonWriter, test);
-                bsonWriter.Flush();
+                serializer.Serialize(jsonWriter, test);
+                jsonWriter.Flush();
 
-                objectBytes = bsonStream.ToArray();
+                objectBytes = stream.ToArray();
             }
 
-            using (MemoryStream bsonStream = new MemoryStream(objectBytes))
-            using (JsonReader bsonReader = new JsonTextReader(new StreamReader(bsonStream)))
+            using (MemoryStream stream = new MemoryStream(objectBytes))
+            using (JsonReader jsonReader = new JsonTextReader(new StreamReader(stream)))
             {
                 // Get exception here
-                TestObject newObject = (TestObject)serializer.Deserialize(bsonReader);
+                TestObject newObject = (TestObject)serializer.Deserialize(jsonReader);
 
                 Assert.AreEqual("Test", newObject.Name);
                 CollectionAssert.AreEquivalent(new byte[] { 72, 63, 62, 71, 92, 55 }, newObject.Data);
@@ -6640,6 +7016,70 @@ Path '', line 1, position 1.");
             Assert.AreEqual(d1[0], d2[0]);
         }
 
+        internal class HasByteArray
+        {
+            public byte[] EncryptedPassword { get; set; }
+        }
+
+        [Test]
+        public void DeserializeByteArrayWithTypeName()
+        {
+            string json = @"{
+  ""$type"": ""Newtonsoft.Json.Tests.Serialization.JsonSerializerTest+HasByteArray, Newtonsoft.Json.Tests"",
+  ""EncryptedPassword"": {
+    ""$type"": ""System.Byte[], mscorlib"",
+    ""$value"": ""cGFzc3dvcmQ=""
+  }
+}";
+            HasByteArray value = JsonConvert.DeserializeObject<HasByteArray>(json, new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Objects
+            });
+
+            CollectionAssert.AreEquivalent(Convert.FromBase64String("cGFzc3dvcmQ="), value.EncryptedPassword);
+        }
+
+        [Test]
+        public void DeserializeByteArrayWithTypeName_BadAdditionalContent()
+        {
+            string json = @"{
+  ""$type"": ""Newtonsoft.Json.Tests.Serialization.JsonSerializerTest+HasByteArray, Newtonsoft.Json.Tests"",
+  ""EncryptedPassword"": {
+    ""$type"": ""System.Byte[], mscorlib"",
+    ""$value"": ""cGFzc3dvcmQ="",
+    ""$value"": ""cGFzc3dvcmQ=""
+  }
+}";
+
+            ExceptionAssert.Throws<JsonReaderException>(() =>
+            {
+                JsonConvert.DeserializeObject<HasByteArray>(json, new JsonSerializerSettings
+                {
+                    TypeNameHandling = TypeNameHandling.Objects
+                });
+            }, "Error reading bytes. Unexpected token: PropertyName. Path 'EncryptedPassword.$value', line 6, position 13.");
+        }
+
+        [Test]
+        public void DeserializeByteArrayWithTypeName_ExtraProperty()
+        {
+            string json = @"{
+  ""$type"": ""Newtonsoft.Json.Tests.Serialization.JsonSerializerTest+HasByteArray, Newtonsoft.Json.Tests"",
+  ""EncryptedPassword"": {
+    ""$type"": ""System.Byte[], mscorlib"",
+    ""$value"": ""cGFzc3dvcmQ=""
+  },
+  ""Pie"": null
+}";
+            HasByteArray value = JsonConvert.DeserializeObject<HasByteArray>(json, new JsonSerializerSettings
+            {
+                TypeNameHandling = TypeNameHandling.Objects
+            });
+
+            Assert.IsNotNull(value.EncryptedPassword);
+            CollectionAssert.AreEquivalent(Convert.FromBase64String("cGFzc3dvcmQ="), value.EncryptedPassword);
+        }
+
         [Test]
         public void SerializeInheritanceHierarchyWithDuplicateProperty()
         {
@@ -6667,10 +7107,10 @@ Path '', line 1, position 1.");
   null
 ]";
 
-            ExceptionAssert.Throws<JsonSerializationException>(() => { List<int> numbers = JsonConvert.DeserializeObject<List<int>>(json); }, "Error converting value {null} to type 'System.Int32'. Path '[3]', line 5, position 7.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => { List<int> numbers = JsonConvert.DeserializeObject<List<int>>(json); }, "Error converting value {null} to type 'System.Int32'. Path '[3]', line 5, position 6.");
         }
 
-#if !(PORTABLE || DNXCORE50 || NETFX_CORE)
+#if !(PORTABLE || NETFX_CORE)
         public class ConvertableIntTestClass
         {
             public ConvertibleInt Integer { get; set; }
@@ -6706,7 +7146,7 @@ Path '', line 1, position 1.");
   ""NullableInteger2"": null
 }";
 
-            ExceptionAssert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<ConvertableIntTestClass>(json), "Error converting value 1 to type 'Newtonsoft.Json.Tests.ConvertibleInt'. Path 'Integer', line 2, position 15.");
+            ExceptionAssert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<ConvertableIntTestClass>(json), "Error converting value 1 to type 'Newtonsoft.Json.Tests.ConvertibleInt'. Path 'Integer', line 2, position 14.");
         }
 #endif
 
@@ -6743,7 +7183,7 @@ Path '', line 1, position 1.");
 }";
 
                 JsonConvert.DeserializeObject<TestObjects.MyClass>(json);
-            }, "Error reading integer. Unexpected token: Boolean. Path 'PreProperty', line 2, position 22.");
+            }, "Unexpected character encountered while parsing value: t. Path 'PreProperty', line 2, position 18.");
         }
 
         [Test]
@@ -6929,7 +7369,8 @@ Path '', line 1, position 1.");
         {
             ExceptionAssert.Throws<ArgumentNullException>(
                 () => { JsonConvert.DeserializeObject<double>(null); },
-                new [] { 
+                new[]
+                {
                     "Value cannot be null." + Environment.NewLine + "Parameter name: value",
                     "Argument cannot be null." + Environment.NewLine + "Parameter name: value" // mono
                 });
@@ -6940,7 +7381,8 @@ Path '', line 1, position 1.");
         {
             ExceptionAssert.Throws<ArgumentNullException>(
                 () => { JsonConvert.DeserializeObject(null); },
-                new [] { 
+                new[]
+                {
                     "Value cannot be null." + Environment.NewLine + "Parameter name: value",
                     "Argument cannot be null." + Environment.NewLine + "Parameter name: value" // mono
                 });
@@ -7125,7 +7567,9 @@ Path '', line 1, position 1.");
             while (true)
             {
                 if (!reader.Read())
+                {
                     break;
+                }
 
                 JsonSerializer serializer = new JsonSerializer();
                 MultipleItemsClass foo = serializer.Deserialize<MultipleItemsClass>(reader);
@@ -7352,6 +7796,34 @@ Path '', line 1, position 1.");
 }", json);
 
             IDictionary<DateTime, int> dic2 = JsonConvert.DeserializeObject<IDictionary<DateTime, int>>(json);
+
+            Assert.AreEqual(2, dic2.Count);
+            Assert.AreEqual(1, dic2[new DateTime(2000, 12, 12, 12, 12, 12, DateTimeKind.Utc)]);
+            Assert.AreEqual(2, dic2[new DateTime(2013, 12, 12, 12, 12, 12, DateTimeKind.Utc)]);
+        }
+
+        [Test]
+        public void DateTimeDictionaryKey_DateTime_Iso_Local()
+        {
+            IDictionary<DateTime, int> dic1 = new Dictionary<DateTime, int>
+            {
+                { new DateTime(2000, 12, 12, 12, 12, 12, DateTimeKind.Utc), 1 },
+                { new DateTime(2013, 12, 12, 12, 12, 12, DateTimeKind.Utc), 2 }
+            };
+
+            string json = JsonConvert.SerializeObject(dic1, Formatting.Indented, new JsonSerializerSettings
+            {
+                DateTimeZoneHandling = DateTimeZoneHandling.Local
+            });
+
+            JObject o = JObject.Parse(json);
+            Assert.IsFalse(o.Properties().ElementAt(0).Name.Contains("Z"));
+            Assert.IsFalse(o.Properties().ElementAt(1).Name.Contains("Z"));
+
+            IDictionary<DateTime, int> dic2 = JsonConvert.DeserializeObject<IDictionary<DateTime, int>>(json, new JsonSerializerSettings
+            {
+                DateTimeZoneHandling = DateTimeZoneHandling.Utc
+            });
 
             Assert.AreEqual(2, dic2.Count);
             Assert.AreEqual(1, dic2[new DateTime(2000, 12, 12, 12, 12, 12, DateTimeKind.Utc)]);
@@ -7736,7 +8208,7 @@ Path '', line 1, position 1.");
         }
 
 #if !(NET20 || NET35 || NET40 || PORTABLE40)
-#if !(PORTABLE || DNXCORE50)
+#if !PORTABLE
         [Test]
         public void DeserializeReadOnlyListWithBigInteger()
         {
@@ -7825,7 +8297,7 @@ Path '', line 1, position 1.");
         }
 #endif
 
-#if !(NETFX_CORE || PORTABLE || DNXCORE50 || NET35 || NET20 || PORTABLE40)
+#if !(NETFX_CORE || PORTABLE || NET35 || NET20 || PORTABLE40 || DNXCORE50)
         [Test]
         public void SerializeTupleWithSerializableAttribute()
         {
@@ -7931,6 +8403,10 @@ Path '', line 1, position 1.");
         [Test]
         public void DateFormatString()
         {
+            CultureInfo culture = new CultureInfo("en-NZ");
+            culture.DateTimeFormat.AMDesignator = "a.m.";
+            culture.DateTimeFormat.PMDesignator = "p.m.";
+
             IList<object> dates = new List<object>
             {
                 new DateTime(2000, 12, 12, 12, 12, 12, DateTimeKind.Utc),
@@ -7940,7 +8416,7 @@ Path '', line 1, position 1.");
             string json = JsonConvert.SerializeObject(dates, Formatting.Indented, new JsonSerializerSettings
             {
                 DateFormatString = "yyyy tt",
-                Culture = new CultureInfo("en-NZ")
+                Culture = culture
             });
 
             StringAssert.AreEqual(@"[
@@ -7972,6 +8448,10 @@ Path '', line 1, position 1.");
         [Test]
         public void JsonSerializerDateFormatString()
         {
+            CultureInfo culture = new CultureInfo("en-NZ");
+            culture.DateTimeFormat.AMDesignator = "a.m.";
+            culture.DateTimeFormat.PMDesignator = "p.m.";
+
             IList<object> dates = new List<object>
             {
                 new DateTime(2000, 12, 12, 12, 12, 12, DateTimeKind.Utc),
@@ -7984,7 +8464,7 @@ Path '', line 1, position 1.");
             JsonSerializer serializer = JsonSerializer.Create(new JsonSerializerSettings
             {
                 DateFormatString = "yyyy tt",
-                Culture = new CultureInfo("en-NZ"),
+                Culture = culture,
                 Formatting = Formatting.Indented
             });
             serializer.Serialize(jsonWriter, dates);
@@ -8071,7 +8551,7 @@ Path '', line 1, position 1.");
         }
 #endif
 
-#if !(PORTABLE || DNXCORE50 || NET35 || NET20 || PORTABLE40)
+#if !(PORTABLE || NET35 || NET20 || PORTABLE40)
         [Test]
         public void ReadTooLargeInteger()
         {
@@ -8201,7 +8681,7 @@ Path '', line 1, position 1.");
         }
 #endif
 
-#if !(NET20 || NET35 || PORTABLE40)
+#if !(NET20 || NET35)
         [Test]
         public void HashSetInterface()
         {
@@ -8254,7 +8734,7 @@ Path '', line 1, position 1.");
         }
 #endif
 
-#if !(NET20 || NET35 || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(NET20 || NET35 || PORTABLE || PORTABLE40)
         [Test]
         public void SerializeBigInteger()
         {
@@ -8276,7 +8756,9 @@ Path '', line 1, position 1.");
             public FooConstructor(string bar)
             {
                 if (bar == null)
-                    throw new ArgumentNullException("bar");
+                {
+                    throw new ArgumentNullException(nameof(bar));
+                }
 
                 Bar = bar;
             }
@@ -8337,6 +8819,57 @@ Path '', line 1, position 1.");
   },
   {
     ""$ref"": ""ae3c399c-058d-431d-91b0-a36c266441b9""
+  }
+]", json);
+        }
+
+        [Test]
+        public void NullReferenceResolver()
+        {
+            PersonReference john = new PersonReference
+            {
+                Id = new Guid("0B64FFDF-D155-44AD-9689-58D9ADB137F3"),
+                Name = "John Smith"
+            };
+
+            PersonReference jane = new PersonReference
+            {
+                Id = new Guid("AE3C399C-058D-431D-91B0-A36C266441B9"),
+                Name = "Jane Smith"
+            };
+
+            john.Spouse = jane;
+            jane.Spouse = john;
+
+            IList<PersonReference> people = new List<PersonReference>
+            {
+                john,
+                jane
+            };
+
+            string json = JsonConvert.SerializeObject(people, new JsonSerializerSettings
+            {
+#pragma warning disable 618
+                ReferenceResolver = null,
+#pragma warning restore 618
+                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+                Formatting = Formatting.Indented
+            });
+
+            StringAssert.AreEqual(@"[
+  {
+    ""$id"": ""1"",
+    ""Name"": ""John Smith"",
+    ""Spouse"": {
+      ""$id"": ""2"",
+      ""Name"": ""Jane Smith"",
+      ""Spouse"": {
+        ""$ref"": ""1""
+      }
+    }
+  },
+  {
+    ""$ref"": ""2""
   }
 ]", json);
         }
@@ -8432,7 +8965,7 @@ Path '', line 1, position 1.");
             Assert.AreEqual(jane, john.Spouse);
         }
 
-#if !(NETFX_CORE || NET35 || NET20 || PORTABLE || DNXCORE50 || PORTABLE40)
+#if !(NETFX_CORE || NET35 || NET20 || PORTABLE || PORTABLE40)
         [Test]
         public void TypeConverterOnInterface()
         {
@@ -8498,7 +9031,7 @@ Path '', line 1, position 1.");
             ParticipantEntity deserializedProduct = JsonConvert.DeserializeObject<ParticipantEntity>(json);
         }
 
-#if !(PORTABLE || DNXCORE50 || NETFX_CORE)
+#if !(PORTABLE || NETFX_CORE)
         public class ConvertibleId : IConvertible
         {
             public int Value;
@@ -8626,11 +9159,11 @@ Path '', line 1, position 1.");
         [Test]
         public void DuplicatePropertiesInNestedObject()
         {
-            ExceptionAssert.Throws<ArgumentException>(() =>
-            {
-                string content = @"{""result"":{""time"":1408188592,""time"":1408188593},""error"":null,""id"":""1""}";
-                JsonConvert.DeserializeObject<JObject>(content);
-            }, "Can not add property time to Newtonsoft.Json.Linq.JObject. Property with the same name already exists on object.");
+            string content = @"{""result"":{""time"":1408188592,""time"":1408188593},""error"":null,""id"":""1""}";
+            JObject o = JsonConvert.DeserializeObject<JObject>(content);
+            int time = (int)o["result"]["time"];
+
+            Assert.AreEqual(1408188593, time);
         }
 
         [Test]
@@ -8886,6 +9419,41 @@ Path '', line 1, position 1.");
 #endif
 
         [Test]
+        public void SerializeObjectWithEvent()
+        {
+            MyObservableObject o = new MyObservableObject
+            {
+                TestString = "Test string"
+            };
+
+            string json = JsonConvert.SerializeObject(o, Formatting.Indented);
+            StringAssert.AreEqual(@"{
+  ""PropertyChanged"": null,
+  ""TestString"": ""Test string""
+}", json);
+
+            MyObservableObject o2 = JsonConvert.DeserializeObject<MyObservableObject>(json);
+            Assert.AreEqual("Test string", o2.TestString);
+        }
+
+        public class MyObservableObject : ObservableObject
+        {
+            public new string PropertyChanged;
+
+            public string TestString { get; set; }
+        }
+
+        public class ObservableObject : INotifyPropertyChanged
+        {
+            public event PropertyChangedEventHandler PropertyChanged;
+
+            protected PropertyChangedEventHandler PropertyChangedHandler
+            {
+                get { return PropertyChanged; }
+            }
+        }
+
+        [Test]
         public void ParameterizedConstructorWithBasePrivateProperties()
         {
             var original = new DerivedConstructorType("Base", "Derived");
@@ -8910,7 +9478,6 @@ Path '', line 1, position 1.");
             [JsonProperty]
             public string DerivedProperty { get; private set; }
         }
-
 
         public class BaseConstructorType
         {
@@ -8992,15 +9559,11 @@ Path '', line 1, position 1.");
 
         public class NullableLongTestClass
         {
-            public ulong? Value
-            {
-                get;
-                set;
-            }
+            public ulong? Value { get; set; }
         }
 #endif
 
-#if !NETFX_CORE
+#if !(NETFX_CORE || DNXCORE50)
         [Test]
         public void MailMessageConverterTest()
         {
@@ -9045,14 +9608,14 @@ Path '', line 1, position 1.");
 }";
 
             ExceptionAssert.Throws<JsonSerializationException>(() =>
-                {
-                    JsonConvert.DeserializeObject<System.Net.Mail.MailMessage>(
-                        JsonMessage,
-                        new MailAddressReadConverter(),
-                        new AttachmentReadConverter(),
-                        new EncodingReadConverter());
-                },
-                "Cannot populate list type System.Net.Mime.HeaderCollection. Path 'Headers', line 26, position 15.");
+            {
+                JsonConvert.DeserializeObject<System.Net.Mail.MailMessage>(
+                    JsonMessage,
+                    new MailAddressReadConverter(),
+                    new AttachmentReadConverter(),
+                    new EncodingReadConverter());
+            },
+                "Cannot populate list type System.Net.Mime.HeaderCollection. Path 'Headers', line 26, position 14.");
         }
 
         public class MailAddressReadConverter : JsonConverter
@@ -9135,7 +9698,9 @@ Path '', line 1, position 1.");
             {
                 var encodingName = serializer.Deserialize<string>(reader);
                 if (encodingName == null)
+                {
                     return null;
+                }
 
                 return Encoding.GetEncoding(encodingName);
             }
@@ -9153,7 +9718,6 @@ Path '', line 1, position 1.");
         [JsonProperty]
         public string DerivedProperty { get; private set; }
     }
-
 
     public class BaseWithPrivate
     {

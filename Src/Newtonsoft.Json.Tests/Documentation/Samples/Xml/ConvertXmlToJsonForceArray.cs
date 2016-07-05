@@ -25,10 +25,18 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Xml;
+#if DNXCORE50
+using Xunit;
+using Test = Xunit.FactAttribute;
+using Assert = Newtonsoft.Json.Tests.XUnitAssert;
+#else
 using NUnit.Framework;
+
+#endif
+
+#if !(NET20 || DNXCORE50)
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Xml
 {
@@ -88,3 +96,5 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Xml
         }
     }
 }
+
+#endif

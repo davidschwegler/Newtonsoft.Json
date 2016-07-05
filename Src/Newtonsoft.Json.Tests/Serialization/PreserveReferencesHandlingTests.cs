@@ -40,6 +40,7 @@ using Test = Xunit.FactAttribute;
 using Assert = Newtonsoft.Json.Tests.XUnitAssert;
 #else
 using NUnit.Framework;
+
 #endif
 
 namespace Newtonsoft.Json.Tests.Serialization
@@ -140,7 +141,6 @@ namespace Newtonsoft.Json.Tests.Serialization
             Assert.AreEqual(c2.ListA[0], c2.ListB[0]);
             Assert.AreEqual(true, c2.ListA[0].B.SomeValue);
         }
-
 
         public class Parent
         {
@@ -429,7 +429,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             {
                 JsonConvert.DeserializeObject<string[][]>(json,
                     new JsonSerializerSettings { PreserveReferencesHandling = PreserveReferencesHandling.All });
-            }, @"Cannot preserve reference to array or readonly list, or list created from a non-default constructor: System.String[][]. Path '$values', line 3, position 15.");
+            }, @"Cannot preserve reference to array or readonly list, or list created from a non-default constructor: System.String[][]. Path '$values', line 3, position 14.");
         }
 
         public class CircularDictionary : Dictionary<string, CircularDictionary>
@@ -479,7 +479,7 @@ namespace Newtonsoft.Json.Tests.Serialization
                         PreserveReferencesHandling = PreserveReferencesHandling.All,
                         MetadataPropertyHandling = MetadataPropertyHandling.Default
                     });
-            }, @"Unexpected end when deserializing object. Path '$id', line 2, position 9.");
+            }, @"Unexpected end when reading JSON. Path '$id', line 2, position 8.");
         }
 
         public class CircularReferenceClassConverter : JsonConverter
@@ -1244,7 +1244,7 @@ namespace Newtonsoft.Json.Tests.Serialization
             ExceptionAssert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<PropertyItemIsReferenceObject>(json, new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Default
-            }), "Error reading object reference '1'. Path 'Data.Prop2.MyProperty', line 9, position 20.");
+            }), "Error reading object reference '1'. Path 'Data.Prop2.MyProperty', line 9, position 19.");
         }
     }
 

@@ -28,7 +28,6 @@ using Newtonsoft.Json.Schema;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 
 namespace Newtonsoft.Json.Tests.Documentation.Samples.Schema
@@ -85,4 +84,5 @@ namespace Newtonsoft.Json.Tests.Documentation.Samples.Schema
         }
     }
 }
+
 #pragma warning restore 618
